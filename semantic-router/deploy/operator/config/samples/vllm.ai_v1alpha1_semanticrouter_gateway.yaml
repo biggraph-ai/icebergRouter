@@ -1,0 +1,54 @@
+---
+# Attach a standalone Router data plane to an existing Gateway.
+# Prerequisites: namespace vllm-serving, Service model-server:8000 serving
+# local/model, and Gateway gateway-system/shared-gateway allowing HTTPRoutes
+# from vllm-serving. Edit these names to match your cluster.
+apiVersion: vllm.ai/v1alpha1
+kind: SemanticRouter
+metadata:
+  name: semantic-router-gateway
+  namespace: vllm-serving
+spec:
+  replicas: 1
+  # Omit gateway.existingRef: keep the Operator's Envoy sidecar, which accepts
+  # inference HTTP and invokes the Router over ExtProc.
+  vllmEndpoints:
+    - name: local-backend
+      model: local/model
+      backend:
+        type: service
+        service:
+          name: model-server
+          port: 8000
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+---
+# This route is user-managed; the Operator does not create HTTPRoutes.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: semantic-router-gateway
+  namespace: vllm-serving
+spec:
+  parentRefs:
+    - name: shared-gateway
+      namespace: gateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - name: semantic-router-gateway
+          # Envoy inference listener. Port 8080 is the management API.
+          port: 8801
+      timeouts:
+        request: 300s
+        backendRequest: 300s

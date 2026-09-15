@@ -1,0 +1,213 @@
+package classification
+
+import (
+	"context"
+	"sync"
+
+	"github.com/vllm-project/semantic-router/src/semantic-router/pkg/config"
+	"github.com/vllm-project/semantic-router/src/semantic-router/pkg/observability/logging"
+)
+
+type signalDispatch struct {
+	signalType string
+	name       string
+	evaluate   func()
+}
+
+func (c *Classifier) buildSignalDispatchers(
+	results *SignalResults,
+	mu *sync.Mutex,
+	textForSignal func(string) string,
+	contextText string,
+	currentUserText string,
+	priorUserMessages []string,
+	nonUserMessages []string,
+	hasPriorAssistantReply bool,
+	imgArg string,
+	imgCache *requestImageEmbeddingCache, // may be nil; both image-consuming evaluators handle nil via cache.resolve's nil-receiver fallthrough
+	convFacts ConversationFacts,
+	requestCtx context.Context,
+	requestFacts RequestFacts,
+	usedSignals map[string]bool,
+) []signalDispatch {
+	dispatchers := c.buildPrimarySignalDispatchers(
+		requestFacts.Context,
+		results,
+		mu,
+		textForSignal,
+		currentUserText,
+		priorUserMessages,
+		hasPriorAssistantReply,
+		imgArg,
+		imgCache,
+		requestCtx,
+	)
+	dispatchers = append(dispatchers, c.buildRequestFactSignalDispatchers(
+		results,
+		mu,
+		textForSignal,
+		contextText,
+		currentUserText,
+		imgArg,
+		imgCache,
+		requestFacts,
+		requestCtx,
+	)...)
+	return append(
+		dispatchers,
+		c.buildPolicySignalDispatchers(
+			results,
+			mu,
+			textForSignal,
+			priorUserMessages,
+			nonUserMessages,
+			convFacts,
+			requestFacts,
+			usedSignals,
+		)...,
+	)
+}
+
+func (c *Classifier) buildPrimarySignalDispatchers(
+	ctx context.Context,
+	results *SignalResults,
+	mu *sync.Mutex,
+	textForSignal func(string) string,
+	currentUserText string,
+	priorUserMessages []string,
+	hasPriorAssistantReply bool,
+	imgArg string,
+	imgCache *requestImageEmbeddingCache,
+	requestCtx context.Context,
+) []signalDispatch {
+	return []signalDispatch{
+		{
+			config.SignalTypeKeyword, "Keyword",
+			func() { c.evaluateKeywordSignal(results, mu, textForSignal(config.SignalTypeKeyword)) },
+		},
+		{
+			config.SignalTypeEmbedding, "Embedding",
+			func() {
+				c.evaluateEmbeddingSignal(requestCtx, results, mu, textForSignal(config.SignalTypeEmbedding), imgArg, imgCache)
+			},
+		},
+		{
+			config.SignalTypeDomain, "Domain",
+			func() { c.evaluateDomainSignal(requestCtx, results, mu, textForSignal(config.SignalTypeDomain)) },
+		},
+		{
+			config.SignalTypeFactCheck, "Fact-check",
+			func() { c.evaluateFactCheckSignal(requestCtx, results, mu, textForSignal(config.SignalTypeFactCheck)) },
+		},
+		{
+			config.SignalTypeUserFeedback, "User feedback",
+			func() {
+				c.evaluateUserFeedbackSignal(
+					requestCtx,
+					results,
+					mu,
+					textForSignal(config.SignalTypeUserFeedback),
+					hasPriorAssistantReply,
+				)
+			},
+		},
+		{
+			config.SignalTypeReask, "Reask",
+			func() { c.evaluateBoundedReaskSignal(results, mu, currentUserText, priorUserMessages) },
+		},
+		{
+			config.SignalTypePreference, "Preference",
+			func() { c.evaluatePreferenceSignal(results, mu, textForSignal(config.SignalTypePreference)) },
+		},
+		{
+			config.SignalTypeLanguage, "Language",
+			func() { c.evaluateLanguageSignal(results, mu, textForSignal(config.SignalTypeLanguage)) },
+		},
+	}
+}
+
+func (c *Classifier) buildRequestFactSignalDispatchers(
+	results *SignalResults,
+	mu *sync.Mutex,
+	textForSignal func(string) string,
+	contextText string,
+	currentUserText string,
+	imgArg string,
+	imgCache *requestImageEmbeddingCache,
+	requestFacts RequestFacts,
+	requestCtx context.Context,
+) []signalDispatch {
+	return []signalDispatch{
+		{
+			config.SignalTypeContext, "Context",
+			func() {
+				c.evaluateContextSignal(
+					results,
+					mu,
+					contextText,
+					requestFacts.ContextTokenFloor,
+				)
+			},
+		},
+		{
+			config.SignalTypeStructure, "Structure",
+			func() {
+				c.evaluateStructureSignal(
+					results,
+					mu,
+					textForSignal(config.SignalTypeStructure),
+					currentUserText,
+				)
+			},
+		},
+		{
+			config.SignalTypeComplexity, "Complexity",
+			func() {
+				c.evaluateComplexitySignal(requestCtx, results, mu, textForSignal(config.SignalTypeComplexity), imgArg, imgCache)
+			},
+		},
+		{
+			config.SignalTypeModality, "Modality",
+			func() { c.evaluateModalitySignal(requestCtx, results, mu, textForSignal(config.SignalTypeModality)) },
+		},
+	}
+}
+
+func (c *Classifier) evaluateBoundedReaskSignal(
+	results *SignalResults,
+	mu *sync.Mutex,
+	currentUserText string,
+	priorUserMessages []string,
+) {
+	c.evaluateReaskSignal(
+		results,
+		mu,
+		textForRoutingSignal(config.SignalTypeReask, currentUserText),
+		boundedReaskMessages(priorUserMessages),
+	)
+}
+
+func boundedReaskMessages(messages []string) []string {
+	bounded := make([]string, len(messages))
+	for index, message := range messages {
+		bounded[index] = textForRoutingSignal(config.SignalTypeReask, message)
+	}
+	return bounded
+}
+
+func runSignalDispatchers(dispatchers []signalDispatch, usedSignals map[string]bool, ready map[string]bool, wg *sync.WaitGroup) {
+	for _, d := range dispatchers {
+		if isSignalTypeUsed(usedSignals, d.signalType) && ready[d.signalType] {
+			wg.Add(1)
+			go func(dispatch signalDispatch) {
+				defer wg.Done()
+				dispatch.evaluate()
+			}(d)
+			continue
+		}
+
+		if !isSignalTypeUsed(usedSignals, d.signalType) {
+			logging.Debugf("[Signal Computation] %s signal not used in any decision, skipping evaluation", d.name)
+		}
+	}
+}
