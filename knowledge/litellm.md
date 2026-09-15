@@ -1,46 +1,39 @@
 # Repository study note: litellm
 
 Repository URL: https://github.com/BerriAI/litellm.git
-Pinned SHA: NOT AVAILABLE (fetch blocked before `FETCH_HEAD`)
-Reviewed files/symbols/line ranges: NONE—source was not retrieved
-Paper or upstream documentation: workspace manifest/register only; upstream README/docs NOT INSPECTED
-Code / dataset / checkpoint license status: mixed licensing boundary reported; NOT REVIEWED
+Pinned SHA: 02d02f10ab10c930604b82a506b76af337b2982c (enclosing snapshot; upstream SHA unknown)
+Reviewed files/symbols/line ranges: `litellm/router.py:Router.__init__` (704–1028); `router_utils/get_retry_from_policy.py` (1–63); `proxy/spend_tracking/budget_reservation.py:reserve_budget_for_request` (201–300), reconciliation/release (327–370), `estimate_request_max_cost` (1080+); `proxy/hooks/max_budget_limiter.py` (15–84)
+Paper or upstream documentation: root README inspected; claims below use code unless labeled documented
+Code / dataset / checkpoint license status: see reuse/open questions
 
 ## Observed responsibility
 
-No implementation behavior was observed. The workspace treats LiteLLM as a
-replaceable provider gateway whose normalization, billing, retry, streaming, and
-failure behavior must be audited rather than trusted as a budget guarantee.
+Provider/gateway normalization plus routing, retry/fallback, cost estimation, and proxy budget counters. It is a transport candidate, not proof of strict invoice-bounded execution.
 
 ## Call-chain trace
 
-UNVERIFIED. Trace request normalization → provider call/attempt identity → retry or
-fallback → streaming/cancellation → usage extraction → pricing → response/error.
-Search both library and gateway paths plus tests and current budget documentation.
+normalized request → optional estimate/counter reservation → provider/router attempt → retry/fallback/stream handling → usage/cost callbacks → reservation reconciliation/release. Multiple fallback classes and inherited retry defaults exist.
+
+## Inputs, outputs and state
+
+See `source-map.md` for the precise schemas and symbol evidence. Mutable model/config/cache state remains upstream-specific; Iceberg adapters must snapshot versions rather than expose live objects.
 
 ## Budget and feedback assumptions
 
-UNKNOWN. Provider-reported usage may arrive late or never; timeout/cancellation is
-not proof of zero charge. Each retry must remain an independently authorized
-liability. No common-ledger or strict-ceiling guarantee is established.
+Reservation uses float estimates. Unknown/nonpositive estimates skip reservation; write failure may continue unless fail-closed; non-strict overage can resize. This is not Iceberg exact-money upper-liability accounting. Cancellation/reconciliation behavior needs mock characterization.
 
 ## Reuse decision
 
-Replaceable transport adapter only. Iceberg must own authorization, attempt IDs,
-pending reconciliation, exact-money settlement, and decision/outcome logs.
+Replaceable adapter only, restricted to non-enterprise surfaces. Iceberg owns authorization and attempt IDs, fixed-unit ledger, pending unknown usage, and policy trace. Root says non-enterprise MIT; enterprise has separate restrictive terms.
 
 ## Minimal test proposal
 
-After inspecting test seams, use a local mock provider for success, timeout with
-unknown usage, streaming cancellation, retry, duplicate settlement, and stale
-budget state. No external provider, model, dataset, secret, network, or paid call.
+In a separately pinned environment, local fake provider only: success, timeout with absent usage, stream cancellation, one retry, fallback, duplicate reconciliation, unavailable counter. Explicitly disable outbound network; no secrets; $0. Assert every physical attempt and unresolved hold is visible.
 
 ## Executed evidence
 
-Core source-only fetch FAILED with HTTPS CONNECT 403 on 2026-09-15. No upstream
-code or service ran.
+NOT RUN. On 2026-09-15 this pass only read source in the supplied Linux workspace. No dependencies were installed; no upstream script, model, dataset, checkpoint, service, network request, or paid call was executed.
 
 ## Open questions
 
-Exact SHA/symbols, license boundaries, pricing versioning, retry/fallback defaults,
-attempt IDs, streaming usage, cancellation semantics, and gateway budget races.
+Upstream SHA, rapidly changing semantics, default retry sources, streaming settlement, provider-specific non-token charges, atomicity/durability backend, enterprise boundary.
