@@ -1,49 +1,55 @@
-# WISERouter specification status
+# WISERouter paper specification (pre-implementation)
 
-Paper: https://arxiv.org/html/2607.23765v1
-Version requested by the register: arXiv v1 (`2607.23765v1`)
-Author-linked implementation: NOT VERIFIED
-Executed evidence: NOT RUN
+Paper: `2607.23765v1.pdf` (arXiv v1), inspected locally; no author-linked code
+verified. Executed evidence: **NOT RUN**.
 
-## Evidence classification
+## Documented mechanism
 
-The paper could not be retrieved in this environment: both the web retrieval tool
-and a direct HTTPS request failed before content was returned. Consequently, no
-algorithm, equation, theorem, parameter, or experimental claim is recorded here
-as inspected paper evidence. The statements in `STUDY_ORDER.md`—contextual
-workload allocation, embedding clusters, offline estimates, exploration before
-allocation, and expected-cost optimization—are **workspace descriptions**, not
-findings independently verified in this pass.
+Sections 3.1–3.2 formulate each query embedding as context, model as action, and
+selected model's quality `Y_t` and normalized resource cost `S_t` as bandit
+feedback. Only the chosen action is observed. The objective is expected cumulative
+quality subject to an expected workload cost budget. ALP converts remaining budget
+into a per-remaining-round constraint and includes a null action with zero reward
+and cost. Baseline ALP assumes a finite context space with known context
+distribution and known context/action expected reward and cost.
 
-## Required paper review
+Section 4 replaces those assumptions in two steps: embed and cluster historical
+queries into finite contexts (assuming queries in a cluster share expected reward
+and cost), then either estimate statistics from historical data (`WR-Offline`) or
+learn them under one shared budget (`WR-Online`). WR-Online uses epsilon-first
+exploration before ALP exploitation. Algorithms 1–2 describe those offline and
+online flows. These are paper descriptions, not tested behavior.
 
-At minimum, inspect sections 3–4, Algorithms 1–2, the assumptions, and the
-experimental appendices. Record exact section/equation/algorithm references for:
+## Budget and feedback interpretation
 
-- decision variables, context, action space, null/abstain action, and constraints;
-- how offline reward and expected cost estimates are formed;
-- exploration and allocation distributions, including ties and zero-mass cases;
-- budget update timing and whether feasibility is in expectation or pathwise;
-- feedback observability, missing outcomes, and any stationarity assumptions;
-- solver, numerical precision, randomness, and convergence assumptions; and
-- datasets, baselines, metrics, uncertainty reporting, and excluded costs.
+The optimization is explicitly in expectation and its empirical cost is based on
+normalized token-price cost. It does **not** establish an invoice liability upper
+bound, exact-money arithmetic, atomic reservations, complete interception of
+retries/tools, or safe treatment of unknown bills. Its reward examples include
+human preference or ground-truth metrics when available; those channels must stay
+distinct in Iceberg.
 
 ## Reproduction boundaries
 
-Keep three separately named mechanisms:
+1. `wr-paper-reproduction`: transcribe paper equations/algorithms and preserve
+   expected-cost behavior, action set, null action, feedback visibility, and stated
+   assumptions.
+2. `wr-plus-common-guard`: native choice plus Iceberg upper-liability admission;
+   do not attribute the guard or its behavior to the authors.
+3. `wr-path-adaptation`: frozen bounded compound options replace model actions;
+   do not inherit paper regret/empirical claims.
 
-1. `wr-paper-reproduction`: only behavior supported by inspected paper evidence.
-2. `wr-plus-common-guard`: the reproduction subjected to Iceberg's shared
-   upper-liability admission guard; do not attribute this guard to the paper.
-3. `wr-path-adaptation`: an equal-option bounded-policy adaptation; do not transfer
-   paper guarantees to it.
+Before coding, independently review exact LP coefficients, budget update order,
+cluster assignment, epsilon schedule, estimators, initialization, numerical solver,
+ties/infeasibility/zero-mass behavior, and theorem assumptions from the equations
+and appendices. The source snapshot contains no verified author implementation.
 
-No implementation should begin from this note. Paper retrieval and review are
-blocking prerequisites.
+## Smallest offline reproduction proposal
 
-## Minimal test proposal
-
-After review, implement tiny deterministic tables only: one option, equal-valued
-options, a null action, zero budget, an expected-cost boundary, and a seeded
-exploration draw. Compare hand-computed distributions and budget updates with the
-paper. This requires no model, dataset, secret, network call, or paid operation.
+In a new isolated standard-library test harness after equation transcription, run
+`python -m unittest tests.test_wiserouter_tiny -v` over hand-computed one-context,
+two-context, null-only, exact-boundary, zero-budget, tie, and seeded exploration
+cases. Required artifact: a reviewed local transcription plus fixture checksum.
+Network/secrets: none. Maximum expense: $0. Expected result: probabilities, chosen
+null actions, observations, and remaining expected budget match hand calculations.
+This proposal is not a reproduced paper result.
