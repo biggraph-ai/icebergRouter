@@ -36,7 +36,7 @@ The script ignores inherited Git hooks and global/system Git configuration for r
 `vendor-lock.json` records notice-file hashes but does not decide licensing. Read code, dataset, checkpoint and embedded third-party terms separately. No license was conclusively verified for every public repository in this kit.
 
 ## Agent entry point
-Read `AGENTS.md`, then `STUDY_ORDER.md`. Use the first prompt in `HANDOFF_PROMPTS.md`. The deliverables belong in `knowledge/`; new implementation belongs in a separate product repository, not in reference checkouts.
+Read `AGENTS.md`, then `STUDY_ORDER.md`. Use the first prompt in `HANDOFF_PROMPTS.md`. The deliverables belong in `knowledge/`; new implementation belongs in a separate folder not referring anything existing .
 
 The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited.docx`. Keep that original nearby; it is not redistributed or rewritten here. `requirements/PLAN_CONSTRAINTS.md` is a working synthesis of the decisions in this conversation, not a verbatim copy of that document.
 
