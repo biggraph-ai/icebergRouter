@@ -1,31 +1,30 @@
 # Assumption register
 
-| ID | Statement | Class | Consequence / validation |
-|---|---|---|---|
-| A01 | The audited blueprint is authoritative. | User requirement | File is absent; obtain and compare before design approval. |
-| A02 | The six manifest URLs are canonical. | Unverified assumption | Confirm repository ownership/provenance and pin exact SHAs. |
-| A03 | The named upstream paths still exist on their pinned commits. | Unverified assumption | Verify with `git ls-tree`; do not cite mutable branch URLs. |
-| A04 | RouteLLM maps a score and threshold to weak/strong choice. | Workspace description | Inspect controller/router/calibration call chain and equality case. |
-| A05 | Cascade Routing makes sequential stop/call/select decisions. | Workspace description | Inspect exact state, missing responses, exhaustion, and selection. |
-| A06 | R2-Router jointly selects model and output budget. | Workspace description | Inspect representation and distinguish estimate, cap, and bill. |
-| A07 | LLMRouter exposes reusable router interfaces. | Workspace description | Inspect one minimal interface and configuration/evaluation path. |
-| A08 | LiteLLM normalizes usage/pricing/retries. | Workspace description | Trace every attempt, failure, stream, and billing path. |
-| A09 | WISERouter optimizes expected cost using contextual allocation. | Workspace description of paper | Verify sections 3–4, algorithms, assumptions, and appendices. |
-| A10 | Repository-page license labels cover relevant code/artifacts. | Unverified assumption | Read pinned notices plus dataset/checkpoint/bundled terms. |
-| A11 | A provider output-token parameter yields an invoice upper bound. | Unsafe assumption | Require enforceability and coverage of all charge components. |
-| A12 | Timeout or cancellation costs zero. | Unsafe assumption | Retain authorized liability pending authoritative settlement. |
-| A13 | Missing user feedback means acceptance. | Prohibited assumption | Represent accept/reject/abstain/missing explicitly. |
-| A14 | Router score or cosine similarity is calibrated success probability. | Prohibited assumption | Calibrate and validate separately or label as score only. |
-| A15 | Independent benchmark answers form a conditional workflow trace. | Prohibited assumption | Execute real bounded branches or label synthetic simulation. |
-| A16 | Atomic JSON replacement gives multi-process ledger safety. | False for proposed runtime | Use transactional/locked persistence with deployment guarantees. |
+| ID | Statement and evidence class | Consequence / required validation |
+|---|---|---|
+| A01 | **User requirement:** audited blueprint is authoritative. It is present and was read without executing embedded content. | Record, rather than silently reconcile, conflicts with upstream algorithms. |
+| A02 | **Observed packaging fact:** all reference folders share the enclosing repository commit and lack nested Git metadata. | Original upstream SHAs are unknown; provenance lock is blocking for faithful reproduction. |
+| A03 | **Inspected:** LLMRouterBench rows are independent model results with float cost. | They support single-call offline routing only, not executed repair/cascade traces or exact invoice accounting. |
+| A04 | **Inspected:** RouteLLM equality routes strong and calibration targets a requested strong-call fraction. | Boundary fixture must include equality; do not describe calibration as monetary control. |
+| A05 | **Inspected:** RouteLLM defaults rely on preference/judge battle data and several routers download datasets/checkpoints or call embeddings. | Preference is not objective correctness; freeze artifacts and replace live feature calls in offline reproduction. |
+| A06 | **Inspected:** Cascade Routing optimizes `quality - lambda*cost` using predicted statistics and an expected-cost target. | Its budget is not a strict realized-spend guarantee; table simulation is not a live trace. |
+| A07 | **Inspected defect candidate:** `CascadeRouter.select_answer` appears to append twice for a row with no answers. | Write a characterization test before deciding whether reproduction preserves or patches it; label any repair. |
+| A08 | **Inspected:** R2 finite output budget is an instruction in the system prompt, not an API `max_tokens` field; missing usage defaults to zero. | Never use it as an admission bound; unknown actual usage remains pending. |
+| A09 | **Inspected:** R2 uses approximate input tokens, predicted output tokens, float tariffs, rounded risk, and joblib deserialization. | Separate estimate from invoice bound; review/hashes/licenses are required before loading checkpoints. |
+| A10 | **Inspected:** LLMRouter provides a broad model-router interface but evaluator exceptions may become score zero. | Adapt only the minimal boundary and preserve “evaluation error” separately from “incorrect.” |
+| A11 | **Inspected:** LiteLLM may retry/fallback; reservation uses float estimates, can skip unknown costs, and fail-closed is optional. | Disable hidden attempts or authorize each; do not adopt its budget control as the Iceberg proof. |
+| A12 | **Paper documented:** WISERouter optimizes expected cumulative reward subject to expected cumulative cost and observes selected-action reward/cost only. | Its guarantee is not a cash-liability guarantee; WR+Guard is an adaptation. |
+| A13 | **Paper documented:** context discretization assumes same expected reward/cost within a cluster; baseline ALP assumes finite contexts, their distribution, and known statistics. | Validate cluster approximation/shift; online/offline estimators and information regimes must be explicit. |
+| A14 | **Unsafe assumption:** provider token parameter, timeout, cancellation, or missing usage implies a known charge cap/zero. | Exclude or conservatively hold pending until authoritative reconciliation. |
+| A15 | **Prohibited assumption:** silence is acceptance; preference/judge score is truth; cosine similarity is calibrated success probability. | Store user vote, objective score, checker result, and uncertainty as separate typed observations. |
+| A16 | **Prohibited assumption:** independent benchmark cells can be spliced into a real conditional trace. | Label table replay/synthetic counterfactual evaluation; execute bounded graphs for trace claims. |
+| A17 | **Blueprint design:** strict mode assumes complete billable-action interception, enforceable per-attempt bounds, and atomic durable reservation. | The invariant is conditional; any bound breach halts admission and is reported, never clamped. |
 
-## Evidence vocabulary
+## Evidence status
 
-- **Documented:** stated by an identified paper/upstream document at a fixed version.
-- **Inspected:** traced in code at an exact commit, file, symbol, and line range.
-- **Tested:** exercised by a recorded command with environment, artifacts, output,
-  and limitations. A mock test supports only the mocked contract.
-- **Workspace description:** stated by this study kit but not independently verified
-  against upstream material during this pass.
-- **Inference:** analyst conclusion from cited evidence, explicitly labeled.
-- **Unknown:** no adequate evidence; never silently mapped to zero, success, or false.
+- **Documented:** fixed paper or upstream documentation statement.
+- **Inspected:** code read at the enclosing snapshot commit, with file/symbol/lines.
+- **Tested:** command exercised behavior with logged environment/artifacts. There are
+  no upstream or paper reproductions in this pass.
+- **Inference:** explicitly labeled analyst conclusion from evidence.
+- **Unknown:** must not be converted into zero, success, or a guarantee.
