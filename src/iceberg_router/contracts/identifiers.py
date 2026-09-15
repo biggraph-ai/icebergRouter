@@ -70,6 +70,10 @@ class ReservationId(Identifier):
     pass
 
 
+class BudgetId(Identifier):
+    pass
+
+
 class EventId(Identifier):
     pass
 

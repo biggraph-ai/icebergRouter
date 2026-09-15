@@ -37,9 +37,9 @@ EXPECTED_MODULES = {
 
 ALLOWED_ICEBERG_IMPORTS = {
     "contracts": {"contracts"},
-    "core": {"contracts"},
-    "policies": {"contracts"},
-    "adapters": {"contracts"},
+    "core": {"contracts", "core"},
+    "policies": {"contracts", "policies"},
+    "adapters": {"contracts", "adapters"},
     "testing": {"contracts", "core", "policies", "adapters", "testing"},
 }
 

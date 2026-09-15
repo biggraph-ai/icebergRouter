@@ -43,9 +43,10 @@ The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited
 ## Product implementation workspace
 
 Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
-`iceberg/`. Increment 0 established package boundaries, and Increment 1 implements
-portable values and records only. There is still no router, budget ledger, provider
-integration, or Iceberg acquisition policy. See `iceberg/ARCHITECTURE.md` before
+`iceberg/`. Increment 0 established package boundaries, Increment 1 implemented
+portable contracts, and Increment 2 implements the single-host SQLite ledger and
+upper-liability governor. There is still no option executor, provider integration,
+routing policy, or Iceberg acquisition policy. See `iceberg/ARCHITECTURE.md` before
 adding product code. Reference directories must remain unchanged and must not be
 imported as runtime packages.
 

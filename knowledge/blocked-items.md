@@ -39,10 +39,10 @@ implementation approval as stated.
     hyperparameters, and author-linked code remain unresolved. Do not claim an
     author-code reproduction.
 11. **Policy-development gate not met:** no upstream source has been installed or
-    run; no dataset split/artifact lock, baseline parity result, or common synthetic
-    behavior fixture exists. The user authorized the dependency-free Increment 0
-    product scaffold, but upstream reproduction and Iceberg-specific acquisition
-    policy implementation remain prohibited until their applicable gates pass.
+    run, and no dataset split/artifact lock or baseline parity result exists. Local
+    contract and budget-governor fixtures now exist through Increment 2, but
+    upstream reproduction and Iceberg-specific acquisition policy implementation
+    remain prohibited until their applicable gates pass.
 
 ## Explicitly not blocked / corrected stale status
 
