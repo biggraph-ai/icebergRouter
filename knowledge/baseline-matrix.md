@@ -1,28 +1,29 @@
 # Baseline comparison matrix
 
-Every upstream column below is a study target, not a verified result. `Unknown`
-must remain unknown until pinned source and, where applicable, an executed offline
-test provide evidence.
+`Inspected` means source bytes were read at the containing snapshot commit;
+`documented` means the paper/README states it; `tested` is **none** in this pass.
 
-| Baseline | Decision unit | Expected-cost role | Liability bound | Feedback / outcome assumption | Conditional trace | Intended boundary |
-|---|---|---|---|---|---|---|
-| Fixed model | One configured option | Direct estimate | Common guard required | Observe only executed option | Single attempt | Iceberg-owned reference baseline |
-| Task rule | Deterministic eligible option | Per-option estimate | Common guard required | Observe only executed option | Single attempt | Iceberg-owned reference baseline |
-| RouteLLM | Weak/strong model threshold (workspace description) | Unknown | Unsupported/unverified | Preference-vs-correctness semantics unknown | Likely one model call; verify | Isolated policy adapter |
-| Cascade Routing | Stop/continue and answer choice (workspace description) | Predicted cost role unknown | Unsupported/unverified | Response-table/training visibility unknown | Intended sequential path; verify | Isolated policy adapter |
-| R2-Router | `(model, output budget)` (workspace description) | Predicted cost role unknown | Token limit is not yet a money bound | Quality labels/artifacts unknown | Likely one selected pair; verify | Isolated policy adapter |
-| LLMRouter | Configurable router (workspace description) | Unknown | Unsupported/unverified | Varies by algorithm; inspect one | Unknown | Minimal interface adapter |
-| WISERouter paper reproduction | Workload allocation (workspace description) | Expected cost reported by workspace | No bound established | Offline estimates/exploration reported; verify | Unknown | Paper-faithful isolated baseline |
-| Iceberg common-guard variant | Same native choice if admitted | Selection estimate | Required checked upper liability | Executed outcomes only; missing explicit | Full authorized trace | Iceberg-owned wrapper, separately named |
+| Baseline | Choice / outcome unit | Cost and budget assumption | Feedback visibility | Trace status | Reuse |
+|---|---|---|---|---|---|
+| Fixed option | One frozen bounded option | Iceberg expected estimate + common liability guard | Executed outcome only | Real attempt trace | Iceberg-owned control |
+| Task rule / random mixture | One eligible option | Same guard and accounts | Executed outcome only; log propensity | Real attempt trace | Iceberg-owned control |
+| LLMRouterBench | One independent `(dataset, split, model, index)` output | Float USD recorded per row and summed; no liability bound (**inspected**) | Ground truth/score present in offline record | Not a conditional path | Dataset/evaluator adapter only |
+| RouteLLM | Strong or weak model via `score >= threshold` | Calibration controls strong-call percentage, not dollars; no upper-liability admission (**inspected**) | Arena preference and judge battles in defaults; only chosen call executes | One model call, gateway behavior additional | Pure decision adapter |
+| Cascade Routing | Next model or stop, then select among observed answers | Optimizes average/expected cost with fitted lambda and randomized tie mixture; no pathwise ceiling (**inspected**) | Training/evaluation accepts response tables; `None` means unrun | Sequential policy can be simulated from table; must execute afresh for real traces | Isolated reproduction |
+| R2-Router | `(model, output-budget)` | Float predicted USD; input tokens approximated; finite budget is prompt-only, “unlimited” tokens predicted (**inspected**) | Ridge quality/token predictors loaded from joblib | One selected generation | Selector adapter only; replace execution cap |
+| LLMRouter | Algorithm-specific model decision | Common interface does not establish shared budget admission (**inspected**) | Varies by router/dataset | Usually decision record, not compound trace | Minimal interface mapping only |
+| WISERouter offline | One model for each clustered query context | Maximizes expected reward under expected workload cost through ALP (**paper documented**) | Historical reward/cost statistics for context-action pairs | Single selected action | Paper-based reproduction |
+| WISERouter online | One model per round after epsilon-first exploration | Exploration and exploitation share expected budget (**paper documented**) | Bandit feedback only for selected model | Sequential single-action rounds | Paper-based reproduction |
+| WR+Guard | Native WR selection, externally admitted | Expected-cost selection plus Iceberg bound | Chosen feedback only | Full authorized attempt | Separately named adaptation |
+| WR-Path+Guard | Frozen compound option as action | Same estimator/governor/options as Iceberg | Real terminal option outcome only | Real conditional option trace | Decisive adapted comparator; no inherited theorem |
+| Iceberg probe variants | Random, stratified, then named active acquisition | Probe/check/embedding cost charged; common guard | Only genuinely acquired signals | Full probe and service traces | Future work, not implemented |
 
-## Fair-comparison invariants
+## Matched-comparison requirements
 
-- Freeze the same original workload and option definitions for every mechanism.
-- Give comparators the same eligibility information and no future-query visibility.
-- Apply one authoritative admission governor, while logging native selections that
-  it blocks rather than rewriting them as upstream decisions.
-- Charge routing, probe, embedding, retrieval, verification, retries, sentinels,
-  and execution to explicit accounts.
-- Report utility, actual cost, pending liability, served coverage, deferrals, and
-  uncertainty over the original-workload denominator.
-- Never splice independent stored model outputs into a claimed executed cascade.
+All mechanisms receive the same frozen workload visibility, eligibility predicates,
+options, tariffs, tool/checker permissions, abstention, and budget governor. Report
+total utility over the original workload, served quality, coverage/deferral/failure,
+confirmed spend, unresolved holds, latency, and routing/adaptation overhead. Keep
+queued-batch and future-blind streaming regimes separate. Native selection, guard
+rejection, and fallback are distinct events. No hindsight oracle or independent
+stored completion is a deployable conditional workflow.
