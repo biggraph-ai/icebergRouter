@@ -1,0 +1,229 @@
+package dev.langchain4j.web.search.tavily;
+
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.UriUtils;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchInformationResult;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
+import dev.langchain4j.web.search.WebSearchResults;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Represents Tavily Search API as a {@code WebSearchEngine}.
+ * See more details <a href="https://docs.tavily.com/docs/tavily-api/rest_api">here</a>.
+ * <br>
+ * When {@link #includeRawContent} is set to {@code true},
+ * the raw content will appear in the {@link WebSearchOrganicResult#content()} field of each result.
+ * <br>
+ * When {@link #includeAnswer} is set to {@code true},
+ * the answer will appear in the {@link WebSearchOrganicResult#snippet()} field of the first result.
+ * In this case, the {@link WebSearchOrganicResult#url()} of the first result will always be "https://tavily.com/" and
+ * the {@link WebSearchOrganicResult#title()} will always be "Tavily Search API".
+ */
+public class TavilyWebSearchEngine implements WebSearchEngine {
+
+    private static final String DEFAULT_BASE_URL = "https://api.tavily.com/";
+
+    private final String apiKey;
+    private final TavilyClient tavilyClient;
+    private final String searchDepth;
+    private final Boolean includeAnswer;
+    private final Boolean includeRawContent;
+    private final List<String> includeDomains;
+    private final List<String> excludeDomains;
+
+    public TavilyWebSearchEngine(
+            String baseUrl,
+            String apiKey,
+            Duration timeout,
+            String searchDepth,
+            Boolean includeAnswer,
+            Boolean includeRawContent,
+            List<String> includeDomains,
+            List<String> excludeDomains) {
+        this(builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .timeout(timeout)
+                .searchDepth(searchDepth)
+                .includeAnswer(includeAnswer)
+                .includeRawContent(includeRawContent)
+                .includeDomains(includeDomains)
+                .excludeDomains(excludeDomains));
+    }
+
+    public TavilyWebSearchEngine(TavilyWebSearchEngineBuilder builder) {
+        this.tavilyClient = TavilyClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(10)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
+                .build();
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.searchDepth = builder.searchDepth;
+        this.includeAnswer = builder.includeAnswer;
+        this.includeRawContent = builder.includeRawContent;
+        this.includeDomains = copyIfNotNull(builder.includeDomains);
+        this.excludeDomains = copyIfNotNull(builder.excludeDomains);
+    }
+
+    public static TavilyWebSearchEngineBuilder builder() {
+        return new TavilyWebSearchEngineBuilder();
+    }
+
+    @Override
+    public WebSearchResults search(WebSearchRequest webSearchRequest) {
+        TavilyResponse tavilyResponse = tavilyClient.search(toTavilyRequest(webSearchRequest));
+        return toWebSearchResults(tavilyResponse);
+    }
+
+    /**
+     * Genuinely non-blocking counterpart of {@link #search(WebSearchRequest)}, used by the asynchronous and reactive
+     * RAG flow. The underlying HTTP call is dispatched asynchronously (no thread is parked while it is in flight),
+     * and cancelling the returned future aborts the in-flight call (best-effort).
+     */
+    @Override
+    public CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
+        CompletableFuture<TavilyResponse> searchFuture = tavilyClient.searchAsync(toTavilyRequest(webSearchRequest));
+        CompletableFuture<WebSearchResults> result = searchFuture.thenApply(TavilyWebSearchEngine::toWebSearchResults);
+        // Link the caller-facing derived stage back to the raw HTTP call so cancelling the returned future aborts it
+        // (TavilyClient.searchAsync delegates to HttpClient.executeAsync, which propagates the cancellation).
+        propagateCancellation(result, searchFuture);
+        return result;
+    }
+
+    private TavilySearchRequest toTavilyRequest(WebSearchRequest webSearchRequest) {
+        return TavilySearchRequest.builder()
+                .apiKey(apiKey)
+                .query(webSearchRequest.searchTerms())
+                .searchDepth(searchDepth)
+                .includeAnswer(includeAnswer)
+                .includeRawContent(includeRawContent)
+                .maxResults(webSearchRequest.maxResults())
+                .includeDomains(includeDomains)
+                .excludeDomains(excludeDomains)
+                .build();
+    }
+
+    private static WebSearchResults toWebSearchResults(TavilyResponse tavilyResponse) {
+        final List<WebSearchOrganicResult> results = tavilyResponse.getResults().stream()
+                .map(TavilyWebSearchEngine::toWebSearchOrganicResult)
+                .collect(toList());
+
+        if (tavilyResponse.getAnswer() != null) {
+            WebSearchOrganicResult answerResult = WebSearchOrganicResult.from(
+                    "Tavily Search API", URI.create("https://tavily.com/"), tavilyResponse.getAnswer(), null);
+            results.add(0, answerResult);
+        }
+
+        return WebSearchResults.from(WebSearchInformationResult.from((long) results.size()), results);
+    }
+
+    public static TavilyWebSearchEngine withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
+
+    private static WebSearchOrganicResult toWebSearchOrganicResult(TavilySearchResult tavilySearchResult) {
+        return WebSearchOrganicResult.from(
+                tavilySearchResult.getTitle(),
+                UriUtils.createUriSafely(tavilySearchResult.getUrl()),
+                tavilySearchResult.getContent(),
+                tavilySearchResult.getRawContent(),
+                Collections.singletonMap("score", String.valueOf(tavilySearchResult.getScore())));
+    }
+
+    public static class TavilyWebSearchEngineBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Duration timeout;
+        private String searchDepth;
+        private Boolean includeAnswer;
+        private Boolean includeRawContent;
+        private List<String> includeDomains;
+        private List<String> excludeDomains;
+        private HttpClientBuilder httpClientBuilder;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        TavilyWebSearchEngineBuilder() {}
+
+        public TavilyWebSearchEngineBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder searchDepth(String searchDepth) {
+            this.searchDepth = searchDepth;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder includeAnswer(Boolean includeAnswer) {
+            this.includeAnswer = includeAnswer;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder includeRawContent(Boolean includeRawContent) {
+            this.includeRawContent = includeRawContent;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder includeDomains(List<String> includeDomains) {
+            this.includeDomains = includeDomains;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder excludeDomains(List<String> excludeDomains) {
+            this.excludeDomains = excludeDomains;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public TavilyWebSearchEngine build() {
+            return new TavilyWebSearchEngine(this);
+        }
+
+        public String toString() {
+            return "TavilyWebSearchEngine.TavilyWebSearchEngineBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth
+                    + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent
+                    + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
+        }
+    }
+}

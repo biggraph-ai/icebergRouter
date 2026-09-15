@@ -1,0 +1,182 @@
+package dev.langchain4j.model.anthropic.common;
+
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
+
+import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
+import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
+import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingMode;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
+
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
+class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
+
+    static final StreamingChatModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_HAIKU_4_5_20251001)
+            .temperature(0.0)
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
+    static final StreamingChatModel ANTHROPIC_STREAMING_SCHEMA_MODEL = AnthropicStreamingChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_HAIKU_4_5_20251001)
+            .beta("structured-outputs-2025-11-13")
+            .temperature(0.0)
+            .logRequests(false)
+            .logResponses(true)
+            .build();
+
+    @Override
+    protected List<StreamingChatModel> baseModels() {
+        return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
+    }
+
+    @Override
+    protected List<StreamingMode> streamingModes() {
+        return List.of(StreamingMode.HANDLER, StreamingMode.PUBLISHER);
+    }
+
+    @Override
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
+        var anthropicChatModelBuilder = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .maxTokens(parameters.maxOutputTokens())
+                .logRequests(true)
+                .logResponses(true);
+        if (parameters.modelName() == null) {
+            anthropicChatModelBuilder.modelName(CLAUDE_HAIKU_4_5_20251001);
+        } else {
+            anthropicChatModelBuilder.modelName(parameters.modelName());
+        }
+        return anthropicChatModelBuilder.build();
+    }
+
+    @Override
+    protected String customModelName() {
+        return "claude-sonnet-4-5-20250929";
+    }
+
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return AnthropicChatRequestParameters.builder()
+                .maxOutputTokens(maxOutputTokens)
+                .build();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
+        return AnthropicTokenUsage.class;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return AnthropicChatResponseMetadata.class;
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormat() {
+        // Anthropic does not support JSON response format without schemas yet
+        return false;
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
+                .listeners(List.of(listener))
+                .build();
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
+
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall ->
+                                // Anthropic does not output same tokens consistently, so we can't easily assert
+                                // partialArguments
+                                toolCall.index() == 0
+                                        && toolCall.id().equals(id)
+                                        && toolCall.name().equals("getWeather")
+                                        && !toolCall.partialArguments().isBlank()),
+                        any());
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall ->
+                                // Anthropic does not output same tokens consistently, so we can't easily assert
+                                // partialArguments
+                                toolCall.index() == 1
+                                        && toolCall.id().equals(id2)
+                                        && toolCall.name().equals("getTime")
+                                        && !toolCall.partialArguments().isBlank()),
+                        any());
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+    }
+
+    @Override
+    protected List<StreamingChatModel> baseModelsSupportingStructuredOutputs() {
+        return List.of(ANTHROPIC_STREAMING_SCHEMA_MODEL);
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingStructuredOutputs")
+    @EnabledIf("supportsToolsAndJsonResponseFormatWithSchema")
+    protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
+            StreamingChatModel model) {
+        // Anthropic structured outputs are a public beta and only supported by
+        // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
+        // 'structured-outputs-2025-11-13' beta header is enabled.
+        super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(model);
+    }
+
+    @Override
+    @ParameterizedTest
+    @MethodSource("modelsSupportingStructuredOutputs")
+    @EnabledIf("supportsJsonResponseFormatWithRawSchema")
+    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
+        // Anthropic structured outputs are a public beta and only supported by
+        // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
+        // 'structured-outputs-2025-11-13' beta header is enabled.
+        super.should_respect_JsonRawSchema_responseFormat(model);
+    }
+
+    @Override
+    protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
+        // Sometimes Anthropic produces one token less than expected (e.g., 4 instead of 5)
+        assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
+    }
+}

@@ -1,0 +1,184 @@
+package dev.langchain4j.model.ollama;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(NON_NULL)
+class CompletionRequest {
+
+    private String model;
+    private String system;
+    private String prompt;
+    private Options options;
+    private Integer width;
+    private Integer height;
+    private Integer steps;
+
+    private Object format;
+
+    private Boolean stream;
+
+    CompletionRequest() {}
+
+    CompletionRequest(
+            String model,
+            String system,
+            String prompt,
+            Options options,
+            Integer width,
+            Integer height,
+            Integer steps,
+            Object format,
+            Boolean stream) {
+        this.model = model;
+        this.system = system;
+        this.prompt = prompt;
+        this.options = options;
+        this.width = width;
+        this.height = height;
+        this.steps = steps;
+        this.format = format;
+        this.stream = stream;
+    }
+
+    static Builder builder() {
+        return new Builder();
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public String getSystem() {
+        return system;
+    }
+
+    public void setSystem(String system) {
+        this.system = system;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
+    }
+
+    public Options getOptions() {
+        return options;
+    }
+
+    public void setOptions(Options options) {
+        this.options = options;
+    }
+
+    public Integer getWidth() {
+        return width;
+    }
+
+    public void setWidth(Integer width) {
+        this.width = width;
+    }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
+
+    public Integer getSteps() {
+        return steps;
+    }
+
+    public void setSteps(Integer steps) {
+        this.steps = steps;
+    }
+
+    public Object getFormat() {
+        return format;
+    }
+
+    public void setFormat(Object format) {
+        this.format = format;
+    }
+
+    public Boolean getStream() {
+        return stream;
+    }
+
+    public void setStream(Boolean stream) {
+        this.stream = stream;
+    }
+
+    static class Builder {
+
+        private String model;
+        private String system;
+        private String prompt;
+        private Options options;
+        private Integer width;
+        private Integer height;
+        private Integer steps;
+        private Object format;
+        private Boolean stream;
+
+        Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        Builder system(String system) {
+            this.system = system;
+            return this;
+        }
+
+        Builder prompt(String prompt) {
+            this.prompt = prompt;
+            return this;
+        }
+
+        Builder options(Options options) {
+            this.options = options;
+            return this;
+        }
+
+        Builder width(Integer width) {
+            this.width = width;
+            return this;
+        }
+
+        Builder height(Integer height) {
+            this.height = height;
+            return this;
+        }
+
+        Builder steps(Integer steps) {
+            this.steps = steps;
+            return this;
+        }
+
+        Builder format(Object format) {
+            this.format = format;
+            return this;
+        }
+
+        Builder stream(Boolean stream) {
+            this.stream = stream;
+            return this;
+        }
+
+        CompletionRequest build() {
+            return new CompletionRequest(model, system, prompt, options, width, height, steps, format, stream);
+        }
+    }
+}

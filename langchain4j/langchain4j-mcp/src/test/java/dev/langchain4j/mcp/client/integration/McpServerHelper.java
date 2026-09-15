@@ -1,0 +1,101 @@
+package dev.langchain4j.mcp.client.integration;
+
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class McpServerHelper {
+
+    private static final Logger log = LoggerFactory.getLogger(McpServerHelper.class);
+
+    static Process startServerHttp(String scriptName) throws InterruptedException, TimeoutException, IOException {
+        return startServerHttp(scriptName, 8080);
+    }
+
+    static Process startServerHttp(String scriptName, int port)
+            throws InterruptedException, TimeoutException, IOException {
+        skipTestsIfJbangNotAvailable();
+        String path = getPathToScript(scriptName);
+        String[] command =
+                new String[] {getJBangCommand(), "--quiet", "--fresh", "run", "-Dquarkus.http.port=" + port, path};
+        log.info("Starting the MCP server using command: " + Arrays.toString(command));
+        Process process = new ProcessBuilder().command(command).inheritIO().start();
+        waitForPort(port, 120);
+        log.info("MCP server has started");
+        return process;
+    }
+
+    static String getPathToScript(String script) {
+        return ClassLoader.getSystemResource(script)
+                .getFile()
+                .substring(isWindows() ? 1 : 0)
+                .replace("/", File.separator);
+    }
+
+    static String getJBangCommand() {
+        String command = System.getProperty("jbang.command");
+        if (isNullOrEmpty(command)) {
+            command = isWindows() ? "jbang.cmd" : "jbang";
+        }
+        return command;
+    }
+
+    static void skipTestsIfJbangNotAvailable() {
+        String command = getJBangCommand();
+        try {
+            new ProcessBuilder().command(command, "--version").start().waitFor();
+        } catch (Exception e) {
+            String message = "jbang is not available (could not execute command '" + command
+                    + "', MCP integration tests will be skipped. "
+                    + "The command may be overridden via the system property 'jbang.command'";
+            log.warn(message, e);
+            assumeTrue(false, message);
+        }
+    }
+
+    private static void waitForPort(int port, int timeoutSeconds) throws InterruptedException, TimeoutException {
+        HttpClient httpClient =
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < timeoutSeconds * 1000) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:" + port))
+                        .timeout(Duration.ofSeconds(2))
+                        .GET()
+                        .build();
+                httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+                return;
+            } catch (Exception e) {
+                TimeUnit.SECONDS.sleep(1);
+            }
+        }
+        throw new TimeoutException("Port " + port + " did not open within " + timeoutSeconds + " seconds");
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase().contains("windows");
+    }
+
+    static void destroyProcessTree(Process process) {
+        if (isWindows()) {
+            ProcessHandle handle = process.toHandle();
+            handle.descendants().forEach(ProcessHandle::destroyForcibly);
+            process.destroyForcibly();
+        } else {
+            process.destroyForcibly();
+        }
+    }
+}

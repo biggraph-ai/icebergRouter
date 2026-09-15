@@ -1,0 +1,79 @@
+package dev.langchain4j.model.anthropic.internal.api;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.List;
+import java.util.Objects;
+
+@JsonInclude(NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class AnthropicToolResultContent extends AnthropicMessageContent {
+
+    public String toolUseId;
+
+    /**
+     * Can be either a {@link String} (text-only tool result)
+     * or a {@link List} of {@link AnthropicMessageContent} (multimodal tool result).
+     */
+    public Object content;
+
+    public Boolean isError;
+
+    public AnthropicToolResultContent(String toolUseId, String content, Boolean isError) {
+        super("tool_result");
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    public AnthropicToolResultContent(
+            String toolUseId, String content, Boolean isError, AnthropicCacheControl cacheControl) {
+        super("tool_result", cacheControl);
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    public AnthropicToolResultContent(String toolUseId, List<AnthropicMessageContent> content, Boolean isError) {
+        super("tool_result");
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    public AnthropicToolResultContent(
+            String toolUseId,
+            List<AnthropicMessageContent> content,
+            Boolean isError,
+            AnthropicCacheControl cacheControl) {
+        super("tool_result", cacheControl);
+        this.toolUseId = toolUseId;
+        this.content = content;
+        this.isError = isError;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        AnthropicToolResultContent that = (AnthropicToolResultContent) o;
+        return Objects.equals(toolUseId, that.toolUseId)
+                && Objects.equals(content, that.content)
+                && Objects.equals(isError, that.isError);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), toolUseId, content, isError);
+    }
+
+    @Override
+    public String toString() {
+        return "AnthropicToolResultContent{" + "isError="
+                + isError + ", type='"
+                + type + '\'' + ", cacheControl="
+                + cacheControl + '}';
+    }
+}

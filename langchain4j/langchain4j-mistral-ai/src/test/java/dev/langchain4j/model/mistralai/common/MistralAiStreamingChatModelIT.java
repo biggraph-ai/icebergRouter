@@ -1,0 +1,97 @@
+package dev.langchain4j.model.mistralai.common;
+
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
+
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.mistralai.MistralAiChatResponseMetadata;
+import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
+import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.InOrder;
+
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
+class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
+
+    static final StreamingChatModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MISTRAL_LARGE_LATEST)
+            // Without a cap, some tool-calling prompts send the model into a repetition loop that runs
+            // until it errors out, burning thousands of output tokens. 2000 is far above what any
+            // passing test needs.
+            .maxTokens(2000)
+            .temperature(0.0)
+            .strictJsonSchema(true)
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
+    @Override
+    protected List<StreamingChatModel> models() {
+        return List.of(MISTRAL_STREAMING_CHAT_MODEL);
+    }
+
+    @Override
+    protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
+        var mistralAiChatModelBuilder = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .defaultRequestParameters(parameters)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true);
+
+        if (parameters.modelName() == null) {
+            mistralAiChatModelBuilder.modelName(OPEN_MISTRAL_7B);
+        }
+        return mistralAiChatModelBuilder.build();
+    }
+
+    @Override
+    protected String customModelName() {
+        // Must differ from the model above, and must be a name Mistral echoes back unchanged:
+        // retired ids such as mistral-medium-2508 are silently served by their successor.
+        return "ministral-8b-latest";
+    }
+
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return MistralAiChatResponseMetadata.class;
+    }
+
+    @Override
+    public StreamingChatModel createModelWith(ChatModelListener listener) {
+        return MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .listeners(List.of(listener))
+                .build();
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
+    }
+
+    @Override
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
+        verifyToolCallbacks(handler, io, id1);
+
+        io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
+    }
+
+    @Override
+    protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
+        return false;
+    }
+}

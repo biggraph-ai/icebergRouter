@@ -1,0 +1,302 @@
+package dev.langchain4j.model.mistralai;
+
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.CODESTRAL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.Base64;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+@EnabledIfEnvironmentVariable(named = "MISTRAL_AI_API_KEY", matches = ".+")
+class MistralAiChatModelIT {
+
+    private static final String VOXTRAL_SMALL = "voxtral-small-2507";
+
+    // https://docs.mistral.ai/platform/guardrailing/
+    @Test
+    void should_generate_system_prompt_to_enforce_guardrails() {
+        // given
+        ChatModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(OPEN_MISTRAL_7B)
+                .safePrompt(true)
+                .temperature(0.0)
+                .build();
+
+        // given
+        UserMessage userMessage = userMessage("Hello, my name is Carlos");
+
+        // then
+        ChatResponse response = model.chat(userMessage);
+
+        // then
+        AiMessage aiMessage = response.aiMessage();
+        assertThat(aiMessage.text()).contains("respect");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_return_valid_json() {
+
+        // given
+        String userMessage = "Return JSON with two fields: name = Klaus, age = 42";
+
+        String expectedJson = "{\"name\":\"Klaus\",\"age\":42}";
+
+        ChatModel mistralLargeModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName("mistral-medium-2508")
+                .temperature(0.0)
+                .responseFormat(ResponseFormat.JSON)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        String json = mistralLargeModel.chat(userMessage);
+
+        // then
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+    }
+
+    @Test
+    void should_fallback_to_default_format_when_no_message_response_format_given() {
+        // given
+        String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+
+        String expectedJson = "{\"transactionId\":\"T123\",\"status\":\"paid\"}";
+
+        ChatModel mistralSmallModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.1)
+                .logRequests(true)
+                .logResponses(true)
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("TransactionStatus")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addStringProperty("transactionId")
+                                        .addStringProperty("status")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        // when
+        String json = mistralSmallModel.chat(userMessage);
+
+        // then
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+    }
+
+    @Test
+    void should_code_generation_using_model_openCodestralMamba_and_return_finishReason() {
+
+        // given
+        ChatModel codestral = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(CODESTRAL_LATEST)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = userMessage("Write a java code for fibonacci");
+
+        // when
+        ChatResponse response = codestral.chat(userMessage);
+
+        // then
+        assertThat(response.aiMessage().text()).isNotBlank();
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 100})
+    void should_handle_timeout(int millis) {
+
+        // given
+        Duration timeout = Duration.ofMillis(millis);
+
+        ChatModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName("open-mistral-nemo")
+                .logRequests(true)
+                .logResponses(true)
+                .maxRetries(0)
+                .timeout(timeout)
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat("hi"))
+                .isExactlyInstanceOf(dev.langchain4j.exception.TimeoutException.class);
+    }
+
+    @Test
+    void should_get_raw_response() {
+        // given
+        ChatModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(OPEN_MISTRAL_7B)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the capital of Germany?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Berlin");
+
+        MistralAiChatResponseMetadata metadata = (MistralAiChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("mistral-correlation-id");
+        assertThat(metadata.rawHttpResponse().body()).contains("Berlin");
+        assertThat(metadata.rawServerSentEvents()).isEmpty();
+    }
+
+    @Test
+    void should_accept_base64_audio_content() throws Exception {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(VOXTRAL_SMALL)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Path file = Paths.get(
+                getClass().getClassLoader().getResource("test_audio.ogg").toURI());
+        String base64Content = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language of the audio?"), AudioContent.from(base64Content, "audio/ogg"));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("German");
+    }
+
+    @Test
+    void should_accept_url_audio_content() {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(VOXTRAL_SMALL)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language of the audio?"),
+                AudioContent.from("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("English");
+    }
+
+    @Test
+    void should_accept_pdf_content_from_base64_data() throws Exception {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.0)
+                .logRequests(false) // PDFs are huge in logs
+                .logResponses(true)
+                .build();
+
+        Path file =
+                Paths.get(getClass().getClassLoader().getResource("test.pdf").toURI());
+        String base64Content = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language in this PDF?"),
+                PdfFileContent.from(base64Content, PdfFile.DEFAULT_MIME_TYPE));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("French");
+    }
+
+    @Test
+    void should_accept_pdf_content_from_url() {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.0)
+                .logRequests(false) // PDFs are huge in logs
+                .logResponses(true)
+                .build();
+
+        String pdfUrl = "https://upload.wikimedia.org/wikipedia/commons/f/f9/"
+                + "Entwicklung_der_t%C3%A4glichen_Neuinfektionen_mit_dem_Corona-Virus_in_Deutschland.pdf";
+
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What's the language in this PDF?"), PdfFileContent.from(pdfUrl));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("German");
+    }
+}

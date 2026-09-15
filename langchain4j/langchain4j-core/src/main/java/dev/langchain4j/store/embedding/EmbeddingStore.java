@@ -1,0 +1,221 @@
+package dev.langchain4j.store.embedding;
+
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Represents a store for embeddings, also known as a vector database.
+ *
+ * @param <Embedded> The class of the object that has been embedded. Typically, this is {@link dev.langchain4j.data.segment.TextSegment}.
+ */
+public interface EmbeddingStore<Embedded> {
+    /**
+     * Adds a given embedding to the store.
+     *
+     * @param embedding The embedding to be added to the store.
+     * @return The auto-generated ID associated with the added embedding.
+     */
+    String add(Embedding embedding);
+
+    /**
+     * Adds a given embedding to the store.
+     *
+     * @param id        The unique identifier for the embedding to be added.
+     * @param embedding The embedding to be added to the store.
+     */
+    void add(String id, Embedding embedding);
+
+    /**
+     * Adds a given embedding and the corresponding content that has been embedded to the store.
+     *
+     * @param embedding The embedding to be added to the store.
+     * @param embedded  Original content that was embedded.
+     * @return The auto-generated ID associated with the added embedding.
+     */
+    String add(Embedding embedding, Embedded embedded);
+
+    /**
+     * Adds multiple embeddings to the store.
+     *
+     * @param embeddings A list of embeddings to be added to the store.
+     * @return A list of auto-generated IDs associated with the added embeddings.
+     */
+    List<String> addAll(List<Embedding> embeddings);
+
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded.
+     * @return A list of auto-generated IDs associated with the added embeddings.
+     */
+    default List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        final List<String> ids = generateIds(embeddings.size());
+        addAll(ids, embeddings, embedded);
+        return ids;
+    }
+
+    /**
+     * Generates list of UUID strings
+     *
+     * @param n - dimension of list
+     */
+    default List<String> generateIds(int n) {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            ids.add(randomUUID());
+        }
+        return ids;
+    }
+
+    /**
+     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
+     *
+     * <p>The lists are positional: the i-th ID, the i-th embedding and the i-th embedded content belong together.
+     * {@code ids} and {@code embeddings} must therefore have the same size, and {@code embedded}, when provided,
+     * must have that size as well. A {@code null} list of IDs or embeddings counts as an empty list, so passing
+     * embeddings without IDs (or the other way around) is a size mismatch, not an empty input.
+     * {@link dev.langchain4j.internal.ValidationUtils#ensureConsistentSizes(List, List, List)} implements
+     * these rules and should be used by implementations.
+     *
+     * <p>Passing no embeddings at all (an empty or {@code null} {@code embeddings} together with an empty or
+     * {@code null} {@code ids}, and no {@code embedded} contents) is a no-op: nothing is stored and no exception
+     * is thrown.
+     *
+     * @param ids        A list of IDs associated with the added embeddings.
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of original contents that were embedded, or {@code null} if they were not provided.
+     * @throws IllegalArgumentException if the sizes of the given lists do not match.
+     */
+    default void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
+        throw new UnsupportedFeatureException("Not supported yet.");
+    }
+
+    /**
+     * Removes a single embedding from the store by ID.
+     *
+     * @param id The unique ID of the embedding to be removed.
+     */
+    default void remove(String id) {
+        ensureNotBlank(id, "id");
+        this.removeAll(singletonList(id));
+    }
+
+    /**
+     * Removes all embeddings that match the specified IDs from the store.
+     *
+     * <p>Having nothing to remove is a no-op: an empty or {@code null} collection of IDs leaves the store
+     * unchanged and throws nothing, in the same way that adding no embeddings stores nothing.
+     *
+     * @param ids A collection of unique IDs of the embeddings to be removed.
+     */
+    default void removeAll(Collection<String> ids) {
+        throw new UnsupportedFeatureException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings that match the specified {@link Filter} from the store.
+     *
+     * @param filter The filter to be applied to the {@link Metadata} of the {@link TextSegment} during removal.
+     *               Only embeddings whose {@code TextSegment}'s {@code Metadata}
+     *               match the {@code Filter} will be removed.
+     */
+    default void removeAll(Filter filter) {
+        throw new UnsupportedFeatureException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings from the store.
+     */
+    default void removeAll() {
+        throw new UnsupportedFeatureException("Not supported yet.");
+    }
+
+    /**
+     * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
+     * <br>
+     * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
+     * <br>
+     * {@link EmbeddingSearchRequest#filter()} can be used to filter by various metadata entries (e.g., user/memory ID).
+     * Please note that not all {@link EmbeddingStore} implementations support {@link Filter}ing.
+     *
+     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
+     */
+    EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request);
+
+    /**
+     * Non-blocking counterpart of {@link #search(EmbeddingSearchRequest)}, used by the asynchronous and reactive RAG
+     * flow (see {@code EmbeddingStoreContentRetriever.retrieveAsync}).
+     * <p>
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a store that is not genuinely asynchronous does not
+     * pretend to be. A store backed by remote/DB I/O opts in by overriding this with a genuinely async query (no
+     * thread parked); an in-memory store may override it to complete synchronously on the calling thread. A store
+     * that has not opted in is usable from the non-blocking RAG path only when the retriever opts into
+     * offloading ({@code offloadBlocking(true)}); otherwise the returned future fails rather than a thread being
+     * silently blocked. With offloading enabled:
+     * {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads its blocking {@link #search(EmbeddingSearchRequest)}
+     * for it, rather than the store being silently offloaded to a thread on every call.
+     * <p>
+     * An implementation that honors cancellation should abort its in-flight query when the returned future is
+     * cancelled (best-effort).
+     *
+     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
+        return AsyncNotSupported.failedFuture(getClass(), "searchAsync");
+    }
+
+    /**
+     * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listener.
+     * <p>
+     * This is a non-breaking convenience method to add observability to any {@link EmbeddingStore} implementation.
+     *
+     * @param listener The listener to add.
+     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listener.
+     * @since 1.11.0
+     */
+    @Experimental
+    default EmbeddingStore<Embedded> addListener(EmbeddingStoreListener listener) {
+        return addListeners(listener == null ? null : List.of(listener));
+    }
+
+    /**
+     * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listeners.
+     * <p>
+     * Listeners are called in the order of iteration.
+     *
+     * @param listeners The listeners to add.
+     * @return An observing {@link EmbeddingStore} that will dispatch events to the provided listeners.
+     * @since 1.11.0
+     */
+    @Experimental
+    default EmbeddingStore<Embedded> addListeners(List<EmbeddingStoreListener> listeners) {
+        if (isNullOrEmpty(listeners)) {
+            return this;
+        }
+        if (this instanceof ListeningEmbeddingStore<Embedded> listeningEmbeddingStore) {
+            return listeningEmbeddingStore.withAdditionalListeners(listeners);
+        }
+        return new ListeningEmbeddingStore<>(this, listeners);
+    }
+}

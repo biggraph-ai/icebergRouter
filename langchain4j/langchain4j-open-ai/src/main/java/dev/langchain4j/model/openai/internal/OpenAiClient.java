@@ -1,0 +1,235 @@
+package dev.langchain4j.model.openai.internal;
+
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
+import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
+import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
+import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
+import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
+import dev.langchain4j.model.openai.internal.image.EditImageRequest;
+import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
+import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
+import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
+import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
+import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
+import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
+import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.Flow.Publisher;
+
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+
+public abstract class OpenAiClient {
+
+    /**
+     * Default size of the bounded back-pressure buffer used by the reactive streaming publisher (see
+     * {@code chatCompletionPublisher}); overridable per object via {@code Builder#streamingBufferSize(int)}.
+     */
+    public static final int DEFAULT_STREAMING_BUFFER_SIZE = ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE;
+
+    public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request);
+
+    public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
+
+    /**
+     * @return a cold {@link Publisher} that streams the chat completion as {@link ChatModelStreamingEvent}s.
+     * @since 1.20.0
+     */
+    @Experimental
+    public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
+            ChatCompletionRequest request, ChatCompletionOptions options) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request);
+
+    public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request);
+
+    public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
+
+    public SyncOrAsync<GenerateImagesResponse> imagesEdit(EditImageRequest request) {
+        throw new UnsupportedOperationException("Image editing is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
+        throw new UnsupportedOperationException("Audio transcription is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
+        throw new UnsupportedOperationException("Text-to-speech is not supported by this client implementation");
+    }
+
+    public SyncOrAsync<ModelsListResponse> listModels() {
+        throw new UnsupportedOperationException("Model listing is not supported by this client implementation");
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static Builder builder() {
+        for (OpenAiClientBuilderFactory factory : ServiceHelper.loadFactories(OpenAiClientBuilderFactory.class)) {
+            return factory.get();
+        }
+        // fallback to the default
+        return DefaultOpenAiClient.builder();
+    }
+
+    @SuppressWarnings("unchecked")
+    public abstract static class Builder<T extends OpenAiClient, B extends Builder<T, B>> {
+
+        public HttpClientBuilder httpClientBuilder;
+        public String baseUrl;
+        public String organizationId;
+        public String projectId;
+        public String apiKey;
+        public Duration connectTimeout;
+        public Duration readTimeout;
+        public String userAgent;
+        public boolean logRequests;
+        public boolean logResponses;
+        public Logger logger;
+        public Supplier<Map<String, String>> customHeadersSupplier;
+        public Map<String, String> customQueryParams;
+        public Integer streamingBufferSize;
+
+        public abstract T build();
+
+        public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return (B) this;
+        }
+
+        /**
+         * @param baseUrl Base URL of OpenAI API. For example: "https://api.openai.com/v1/"
+         * @return builder
+         */
+        public B baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return (B) this;
+        }
+
+        /**
+         * @param organizationId The OpenAI Organization ID.
+         *                       More info <a href="https://platform.openai.com/docs/api-reference/organizations-and-projects-optional">here</a>.
+         * @return builder
+         */
+        public B organizationId(String organizationId) {
+            this.organizationId = organizationId;
+            return (B) this;
+        }
+
+        /**
+         * @param projectId The OpenAI Project ID.
+         *                  More info <a href="https://platform.openai.com/docs/api-reference/organizations-and-projects-optional">here</a>.
+         * @return builder
+         */
+        public B projectId(String projectId) {
+            this.projectId = projectId;
+            return (B) this;
+        }
+
+        /**
+         * @param apiKey OpenAI API key.
+         *               Will be injected in HTTP headers like this: "Authorization: Bearer ${apiKey}"
+         * @return builder
+         */
+        public B apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return (B) this;
+        }
+
+        public B connectTimeout(Duration connectTimeout) {
+            this.connectTimeout = connectTimeout;
+            return (B) this;
+        }
+
+        public B readTimeout(Duration readTimeout) {
+            this.readTimeout = readTimeout;
+            return (B) this;
+        }
+
+        public B userAgent(String userAgent) {
+            this.userAgent = userAgent;
+            return (B) this;
+        }
+
+        public B logRequests(Boolean logRequests) {
+            if (logRequests == null) {
+                logRequests = false;
+            }
+            this.logRequests = logRequests;
+            return (B) this;
+        }
+
+        public B logger(Logger logger) {
+            this.logger = logger;
+            return (B) this;
+        }
+
+        public B logResponses(Boolean logResponses) {
+            if (logResponses == null) {
+                logResponses = false;
+            }
+            this.logResponses = logResponses;
+            return (B) this;
+        }
+
+        /**
+         * Custom headers to be added to each HTTP request.
+         *
+         * @param customHeaders a map of headers
+         * @return builder
+         */
+        public B customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return (B) this;
+        }
+
+        /**
+         * A supplier for custom headers to be added to each HTTP request.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         *
+         * @param customHeadersSupplier a supplier that provides a map of headers
+         * @return builder
+         */
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return (B) this;
+        }
+
+        /**
+         * Custom query parameters to be added to each HTTP request URL.
+         *
+         * @param customQueryParams a map of query parameters
+         * @return builder
+         */
+        public B customQueryParams(Map<String, String> customQueryParams) {
+            this.customQueryParams = customQueryParams;
+            return (B) this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer used by the reactive streaming publisher
+         * ({@code chatCompletionPublisher}). Defaults to {@value #DEFAULT_STREAMING_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size; must be greater than zero
+         * @return builder
+         * @since 1.20.0
+         */
+        @Experimental
+        public B streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
+            return (B) this;
+        }
+    }
+}

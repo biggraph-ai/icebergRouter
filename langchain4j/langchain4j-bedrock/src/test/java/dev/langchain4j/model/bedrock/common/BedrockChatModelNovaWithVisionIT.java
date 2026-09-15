@@ -1,0 +1,126 @@
+package dev.langchain4j.model.bedrock.common;
+
+import static dev.langchain4j.model.bedrock.TestedModels.*;
+import static dev.langchain4j.model.bedrock.common.BedrockAiServicesIT.sleepIfNeeded;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockChatResponseMetadata;
+import dev.langchain4j.model.bedrock.BedrockTokenUsage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelIT;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
+class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
+
+    @Override
+    protected List<ChatModel> models() {
+        return List.of(AWS_NOVA_LITE, AWS_NOVA_PRO);
+    }
+
+    @Override
+    protected String customModelName() {
+        return "us.anthropic.claude-haiku-4-5-20251001-v1:0";
+    }
+
+    @Override
+    protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
+        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+    }
+
+    @Override
+    protected ChatModel createModelWith(ChatRequestParameters parameters) {
+        BedrockChatModel.Builder builder = BedrockChatModel.builder().defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            // Claude excludes the stop sequence from the response, as should_respect_stopSequences_* expects
+            builder.modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0");
+        }
+        return builder.build();
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return BedrockTokenUsage.class;
+    }
+
+    @Override
+    protected boolean supportsChatAsync() {
+        return true;
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormat() {
+        return false; // JSON response format without schema is not supported
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithSchema() {
+        return false; // not supported for models used in this class
+    }
+
+    @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false; // not supported for models used in this class
+    }
+
+    @Override
+    protected boolean assertExceptionType() {
+        // Bedrock throws InvalidRequestException, while test expects UnsupportedFeatureException
+        return false;
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
+        return BedrockChatResponseMetadata.class;
+    }
+
+    // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
+    @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsStopSequencesParameter")
+    protected void should_respect_stopSequences_in_chat_request(ChatModel model) {
+
+        // given
+        List<String> stopSequences = List.of("Hello", " Hello");
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Say 'Hello World'"))
+                .parameters(parameters)
+                .build();
+
+        // when
+        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).containsIgnoringCase("Hello");
+        assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+
+        if (assertFinishReason()) {
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+        }
+    }
+
+    @AfterEach
+    void afterEach() {
+        sleepIfNeeded();
+    }
+}

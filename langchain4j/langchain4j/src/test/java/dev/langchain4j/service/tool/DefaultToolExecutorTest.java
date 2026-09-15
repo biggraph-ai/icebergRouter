@@ -1,0 +1,1039 @@
+package dev.langchain4j.service.tool;
+
+import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.invocation.InvocationContext;
+import java.lang.reflect.Method;
+import java.util.concurrent.CompletableFuture;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+class DefaultToolExecutorTest implements WithAssertions {
+
+    public enum ExampleEnum {
+        A,
+        B,
+        C
+    }
+
+    @SuppressWarnings("unused")
+    public void example(
+            @ToolMemoryId UUID idA,
+            int intP,
+            Integer integerP,
+            long longP,
+            Long LongP,
+            float floatP,
+            Float FloatP,
+            double doubleP,
+            Double DoubleP,
+            byte byteP,
+            Byte ByteP,
+            short shortP,
+            Short ShortP,
+            ExampleEnum enumP,
+            boolean booleanP,
+            Boolean BooleanP,
+            double double2P,
+            Double Double2P,
+            List<Integer> integerList,
+            Set<ExampleEnum> enumSet,
+            Map<String, Integer> map) {}
+
+    @Test
+    void prepare_arguments() throws Exception {
+        UUID memoryId = UUID.randomUUID();
+
+        Method method = getClass()
+                .getMethod(
+                        "example",
+                        UUID.class,
+                        int.class,
+                        Integer.class,
+                        long.class,
+                        Long.class,
+                        float.class,
+                        Float.class,
+                        double.class,
+                        Double.class,
+                        byte.class,
+                        Byte.class,
+                        short.class,
+                        Short.class,
+                        ExampleEnum.class,
+                        boolean.class,
+                        Boolean.class,
+                        double.class,
+                        Double.class,
+                        List.class,
+                        Set.class,
+                        Map.class);
+
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg1", 1.0);
+        arguments.put("arg2", 2.0);
+        arguments.put("arg3", 3.0);
+        arguments.put("arg4", 4.0);
+        arguments.put("arg5", 5.5);
+        arguments.put("arg6", 6.5);
+        arguments.put("arg7", 7.5);
+        arguments.put("arg8", 8.5);
+        arguments.put("arg9", 9.0);
+        arguments.put("arg10", 10.0);
+        arguments.put("arg11", 11.0);
+        arguments.put("arg12", 12.0);
+        arguments.put("arg13", "A");
+        arguments.put("arg14", true);
+        arguments.put("arg15", Boolean.FALSE);
+        arguments.put("arg16", "1.1");
+        arguments.put("arg17", "2.2");
+        arguments.put("arg18", asList(1.0, 2.0, 3.0));
+        arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
+        arguments.put("arg20", singletonMap("A", 1.0));
+
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
+
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "example", arguments, invocationContext);
+
+        assertThat(args)
+                .containsExactly(
+                        memoryId,
+                        1,
+                        2,
+                        3L,
+                        4L,
+                        5.5f,
+                        6.5f,
+                        7.5,
+                        8.5,
+                        (byte) 9,
+                        (byte) 10,
+                        (short) 11,
+                        (short) 12,
+                        ExampleEnum.A,
+                        true,
+                        false,
+                        1.1,
+                        2.2,
+                        asList(1, 2, 3),
+                        new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)),
+                        singletonMap("A", 1));
+
+        {
+            Map<String, Object> as = new HashMap<>(arguments);
+            as.put("arg1", "abc");
+
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "example", as, invocationContext))
+                    .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
+                    .withNoCause();
+        }
+    }
+
+    record Person(String name, int age) {}
+
+    @Test
+    void coerce_argument() {
+
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("name", "Klaus");
+        personMap.put("age", 42);
+        assertThat(coerceArgument(personMap, "arg", Person.class, null)).isEqualTo(new Person("Klaus", 42));
+
+        assertThat(coerceArgument("abc", "arg", String.class, null)).isEqualTo("abc");
+
+        assertThat(coerceArgument("A", "arg", ExampleEnum.class, null)).isEqualTo(ExampleEnum.A);
+        assertThat(coerceArgument(ExampleEnum.A, "arg", ExampleEnum.class, null))
+                .isEqualTo(ExampleEnum.A);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument("D", "arg", ExampleEnum.class, null))
+                .withMessageContaining("Argument \"arg\" is not a valid enum value for");
+
+        assertThat(coerceArgument(true, "arg", boolean.class, null)).isEqualTo(true);
+        assertThat(coerceArgument(Boolean.FALSE, "arg", boolean.class, null)).isEqualTo(false);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument("true", "arg", boolean.class, null))
+                .withMessageContaining("Argument \"arg\" is not convertable to boolean, got java.lang.String: <true>");
+
+        assertThat(coerceArgument(1.5, "arg", double.class, null)).isEqualTo(1.5);
+        assertThat(coerceArgument(1.5, "arg", Double.class, null)).isEqualTo(1.5);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument("abc", "arg", double.class, null))
+                .withMessageContaining("Argument \"arg\" is not convertable to double, got java.lang.String: <abc>");
+
+        assertThat(coerceArgument(1.5, "arg", float.class, null)).isEqualTo(1.5f);
+        assertThat(coerceArgument(1.5, "arg", Float.class, null)).isEqualTo(1.5f);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5 * ((double) Float.MAX_VALUE), "arg", float.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for float:");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(-1.5 * ((double) Float.MAX_VALUE), "arg", float.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for float:");
+
+        assertThat(coerceArgument(1.0, "arg", int.class, null)).isEqualTo(1);
+        assertThat(coerceArgument(Integer.MAX_VALUE, "arg", int.class, null)).isEqualTo(Integer.MAX_VALUE);
+        assertThat(coerceArgument(Integer.MIN_VALUE, "arg", Integer.class, null))
+                .isEqualTo(Integer.MIN_VALUE);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", int.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(Integer.MAX_VALUE + 1.0, "arg", int.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for int:");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(Integer.MIN_VALUE - 1.0, "arg", Integer.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Integer:");
+
+        assertThat(coerceArgument(1.0, "arg", long.class, null)).isEqualTo(1L);
+        assertThat(coerceArgument(Long.MAX_VALUE, "arg", long.class, null)).isEqualTo(Long.MAX_VALUE);
+        assertThat(coerceArgument(Long.MIN_VALUE, "arg", Long.class, null)).isEqualTo(Long.MIN_VALUE);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5 * ((double) Long.MAX_VALUE), "arg", long.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for long:");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5 * ((double) Long.MIN_VALUE), "arg", Long.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Long:");
+
+        assertThat(coerceArgument(1.0, "arg", short.class, null)).isEqualTo((short) 1);
+        assertThat(coerceArgument(Short.MAX_VALUE, "arg", short.class, null)).isEqualTo(Short.MAX_VALUE);
+        assertThat(coerceArgument(Short.MIN_VALUE, "arg", Short.class, null)).isEqualTo(Short.MIN_VALUE);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", short.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(Short.MAX_VALUE + 1.0, "arg", short.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for short:");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(Short.MIN_VALUE - 1.0, "arg", Short.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Short:");
+
+        assertThat(coerceArgument(1.0, "arg", byte.class, null)).isEqualTo((byte) 1);
+        assertThat(coerceArgument(Byte.MAX_VALUE, "arg", byte.class, null)).isEqualTo(Byte.MAX_VALUE);
+        assertThat(coerceArgument(Byte.MIN_VALUE, "arg", Byte.class, null)).isEqualTo(Byte.MIN_VALUE);
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", byte.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(Byte.MAX_VALUE + 1.0, "arg", byte.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for byte:");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(Byte.MIN_VALUE - 1.0, "arg", Byte.class, null))
+                .withMessageContaining("Argument \"arg\" is out of range for java.lang.Byte:");
+
+        assertThat(coerceArgument(1.5, "arg", BigDecimal.class, null)).isEqualTo(BigDecimal.valueOf(1.5));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument("abc", "arg", BigDecimal.class, null))
+                .withMessageContaining(
+                        "Argument \"arg\" is not convertable to java.math.BigDecimal, got java.lang.String: <abc>");
+
+        assertThat(coerceArgument(1, "arg", BigInteger.class, null)).isEqualTo(BigInteger.valueOf(1));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument("abc", "arg", BigInteger.class, null))
+                .withMessageContaining(
+                        "Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
+
+        assertThat(coerceArgument(
+                        asList(1.0, 2.0, 3.0), "arg", List.class, new TypeReference<List<Integer>>() {}.getType()))
+                .isEqualTo(asList(1, 2, 3));
+
+        assertThat(coerceArgument(
+                        new HashSet<>(asList("A", "B")),
+                        "arg",
+                        List.class,
+                        new TypeReference<Set<ExampleEnum>>() {}.getType()))
+                .isEqualTo(new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
+
+        assertThat(coerceArgument(
+                        singletonMap("A", 1.0),
+                        "arg",
+                        List.class,
+                        new TypeReference<Map<String, Integer>>() {}.getType()))
+                .isEqualTo(singletonMap("A", 1));
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_large_long() {
+        // A JSON integer above 2^53 is deserialized as a Long by Jackson. Converting via double
+        // would silently corrupt it (9007199254740993 -> 9007199254740992).
+        long largeLong = 9007199254740993L; // 2^53 + 1
+
+        assertThat(coerceArgument(largeLong, "arg", long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(largeLong, "arg", Long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(Long.MAX_VALUE, "arg", long.class, null)).isEqualTo(Long.MAX_VALUE);
+        assertThat(coerceArgument(Long.MIN_VALUE, "arg", long.class, null)).isEqualTo(Long.MIN_VALUE);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_large_big_integer() {
+        // A JSON integer larger than Long.MAX_VALUE is deserialized as a BigInteger by Jackson.
+        BigInteger largeBigInteger = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.TEN);
+
+        assertThat(coerceArgument(largeBigInteger, "arg", BigInteger.class, null))
+                .isEqualTo(largeBigInteger);
+        // A large integral value must not be routed through double for a BigInteger parameter.
+        BigInteger aboveDoublePrecision = new BigInteger("9007199254740993"); // 2^53 + 1
+        assertThat(coerceArgument(aboveDoublePrecision, "arg", BigInteger.class, null))
+                .isEqualTo(aboveDoublePrecision);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_big_decimal() {
+        // 0.1 has no exact double representation; converting via new BigDecimal(double) would yield
+        // 0.1000000000000000055511151231257827021181583404541015625. Rendering via Number.toString()
+        // (as BigDecimal.valueOf(double) does) keeps it as "0.1".
+        assertThat(coerceArgument(0.1, "arg", BigDecimal.class, null)).isEqualTo(new BigDecimal("0.1"));
+        // A BigDecimal argument must be preserved exactly.
+        BigDecimal preciseValue = new BigDecimal("1234567890.123456789");
+        assertThat(coerceArgument(preciseValue, "arg", BigDecimal.class, null)).isEqualTo(preciseValue);
+    }
+
+    @Test
+    void coerce_argument_rejects_fractional_value_for_integer_types() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
+                .withMessageContaining("has non-integer value");
+    }
+
+    private static class TestTool {
+
+        @Tool
+        public int addOne(int num) {
+            return num + 1;
+        }
+    }
+
+    private static class ThrowingTool {
+
+        @Tool
+        public String throwsWithMessage() {
+            throw new IllegalStateException("something went wrong");
+        }
+
+        @Tool
+        public String throwsWithoutMessage() {
+            throw new NullPointerException();
+        }
+    }
+
+    @Test
+    void tool_exception_with_message_is_returned_as_error() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo("something went wrong");
+    }
+
+    @Test
+    void tool_exception_without_message_falls_back_to_class_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithoutMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithoutMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo(NullPointerException.class.getName());
+    }
+
+    @Test
+    void should_execute_tool_by_method_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor =
+                new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_with_execution_request() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_java_method_name_when_custom_tool_name_is_set() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new CustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_by_java_method_name_when_custom_tool_name_is_blank() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new BlankNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_not_execute_tool_with_unknown_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("subtract_one")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new CustomNamedTool(), request))
+                .withMessageContaining("Method 'subtract_one' is not found in object");
+    }
+
+    @Test
+    void should_execute_inherited_tool_by_custom_tool_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("add_one")
+                .arguments("{ \"value\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new InheritedCustomNamedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_inherited_tool_by_java_method_name() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"value\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new InheritedTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    void should_execute_tool_using_exactly_what_its_tool_specification_publishes() {
+        List<Object> toolObjects = asList(
+                new CustomNamedTool(), new BlankNamedTool(), new InheritedCustomNamedTool(), new InheritedTool());
+
+        for (Object toolObject : toolObjects) {
+            for (ToolSpecification specification : ToolSpecifications.toolSpecificationsFrom(toolObject)) {
+                String parameterName = specification.parameters().properties().keySet().stream()
+                        .findFirst()
+                        .orElseThrow();
+
+                ToolExecutionRequest request = ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(specification.name())
+                        .arguments("{ \"" + parameterName + "\": 2 }")
+                        .build();
+
+                DefaultToolExecutor toolExecutor = new DefaultToolExecutor(toolObject, request);
+
+                assertThat(toolExecutor.execute(request, "DEFAULT")).isEqualTo("3");
+            }
+        }
+    }
+
+    private static class CustomNamedTool {
+
+        @Tool(name = "add_one")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    private static class BlankNamedTool {
+
+        @Tool(name = "")
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    interface CustomNamedToolInterface {
+
+        @Tool(name = "add_one")
+        int addOne(@P(name = "value", description = "the value to increment") int value);
+    }
+
+    private static class InheritedCustomNamedTool implements CustomNamedToolInterface {
+
+        @Override
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    interface ToolInterface {
+
+        @Tool
+        int addOne(@P(name = "value", description = "the value to increment") int value);
+    }
+
+    private static class InheritedTool implements ToolInterface {
+
+        @Override
+        public int addOne(int value) {
+            return value + 1;
+        }
+    }
+
+    @Test
+    void should_not_execute_tool_with_wrong_execution_request() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("unknownMethod")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), request))
+                .withMessageContaining("Method 'unknownMethod' is not found in object");
+    }
+
+    @Test
+    void should_not_execute_tool_with_null_execution_request() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
+    }
+
+    private static class TestNullArgumentTool {
+
+        @Tool
+        public boolean notNull(Integer num) {
+            return num != null;
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"{ \"arg0\": null }, false", "{}, false", "{ \"arg0\": 1 }, true"})
+    void execute_with_argument_value_might_be_null(String arguments, String expectedResult) {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("notNull")
+                .arguments(arguments)
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestNullArgumentTool(), request);
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo(expectedResult);
+    }
+
+    private static class PersonTool {
+
+        @Tool
+        public Person save(Person arg) {
+            assert arg != null;
+            return arg;
+        }
+
+        @Tool
+        public Person[] saveArray(Person[] arg) {
+            assert arg != null;
+            assert arg.length == 2;
+            assert arg[0].getClass() == Person.class;
+            assert arg[0].name.equals("Klaus");
+            assert arg[0].age == 42;
+            assert arg[1].getClass() == Person.class;
+            assert arg[1].name.equals("Peter");
+            assert arg[1].age == 43;
+            return arg;
+        }
+
+        @Tool
+        public List<Person> saveList(List<Person> personList) {
+            assert personList != null;
+            assert personList.size() == 2;
+            personList.forEach(person -> {
+                assert person.getClass() == Person.class;
+            });
+            assert personList.get(0).name.equals("Klaus");
+            assert personList.get(0).age == 42;
+            assert personList.get(1).name.equals("Peter");
+            assert personList.get(1).age == 43;
+            return personList;
+        }
+
+        @Tool
+        public Set<Person> saveSet(Set<Person> personSet) {
+            assert personSet != null;
+            assert personSet.size() == 2;
+            personSet.forEach(person -> {
+                assert person.getClass() == Person.class;
+            });
+            assert personSet.stream().anyMatch(person -> person.name.equals("Klaus") && person.age == 42);
+            assert personSet.stream().anyMatch(person -> person.name.equals("Peter") && person.age == 43);
+            return personSet;
+        }
+
+        @Tool
+        public Map<String, Person> saveMap(Map<String, Person> idPersonMap) {
+            assert idPersonMap != null;
+            assert idPersonMap.size() == 2;
+            idPersonMap.forEach((id, person) -> {
+                assert id.getClass() == String.class;
+                assert person.getClass() == Person.class;
+            });
+            assert idPersonMap.get("p1").name.equals("Klaus");
+            assert idPersonMap.get("p1").age == 42;
+            assert idPersonMap.get("p2").name.equals("Peter");
+            assert idPersonMap.get("p2").age == 43;
+            return idPersonMap;
+        }
+    }
+
+    @Test
+    void should_execute_tools_with_collection() {
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("save")
+                .arguments("{ \"arg0\": {\"name\": \"Klaus\", \"age\": 42} }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+        assertThat(result).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\",\"age\": 42}");
+
+        ToolExecutionRequest request2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("saveList")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
+        String result2 = toolExecutor2.execute(request2, "DEFAULT");
+        assertThat(result2).isEqualToIgnoringWhitespace("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
+
+        ToolExecutionRequest request3 = ToolExecutionRequest.builder()
+                .id("3")
+                .name("saveSet")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
+        String result3 = toolExecutor3.execute(request3, "DEFAULT");
+        assertThat(result3).isEqualToIgnoringWhitespace("""
+                [
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  },
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  }
+                ]""");
+
+        ToolExecutionRequest request4 = ToolExecutionRequest.builder()
+                .id("4")
+                .name("saveMap")
+                .arguments(
+                        "{ \"arg0\": { \"p1\" : {\"name\": \"Klaus\", \"age\": 42}, \"p2\" : {\"name\": \"Peter\", \"age\": 43} } }")
+                .build();
+        DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
+        String result4 = toolExecutor4.execute(request4, "DEFAULT");
+        assertThat(result4).isEqualToIgnoringWhitespace("""
+                {
+                  "p1": {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  "p2": {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                }""");
+
+        ToolExecutionRequest request5 = ToolExecutionRequest.builder()
+                .id("5")
+                .name("saveArray")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
+        String result5 = toolExecutor5.execute(request5, "DEFAULT");
+        assertThat(result5).isEqualToIgnoringWhitespace("""
+                [
+                  {
+                    "name": "Klaus",
+                    "age": 42
+                  },
+                  {
+                    "name": "Peter",
+                    "age": 43
+                  }
+                ]""");
+    }
+
+    @Test
+    void should_throw_exception_when_arguments_cannot_be_parsed() throws NoSuchMethodException {
+
+        // given
+        String arguments = "{ invalid JSON }";
+
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("tool").arguments(arguments).build();
+
+        class Tools {
+
+            @Tool
+            void tool(String s) {}
+        }
+
+        ToolExecutor toolExecutor =
+                new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
+
+        // when-then
+        assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("was expecting double-quote");
+    }
+
+    @Test
+    void should_return_exception_message_when_tool_method_throws_exception() throws NoSuchMethodException {
+
+        // given
+        String errorMessage = "something went wrong...";
+
+        class Tools {
+
+            @Tool
+            void tool() {
+                throw new RuntimeException(errorMessage);
+            }
+        }
+
+        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool"));
+
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("tool").arguments("{}").build();
+
+        // when
+        String toolResult = toolExecutor.execute(toolRequest, "default");
+
+        // then
+        assertThat(toolResult).isEqualTo(errorMessage);
+
+        // when
+        ToolExecutionResult toolExecutionResult = toolExecutor.executeWithContext(toolRequest, null);
+
+        // then
+        assertThat(toolExecutionResult.isError()).isTrue();
+        assertThat(toolExecutionResult.result()).isNull();
+        assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
+    }
+
+    @Test
+    void should_prepare_arguments_with_optional_parameter_provided() throws Exception {
+
+        // given
+        class ToolWithOptional {
+            public void tool(String name, Optional<Integer> age) {}
+        }
+
+        Method method = ToolWithOptional.class.getMethod("tool", String.class, Optional.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "Klaus");
+        arguments.put("arg1", 42.0);
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        // when
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
+
+        // then
+        assertThat(args).hasSize(2);
+        assertThat(args[0]).isEqualTo("Klaus");
+        assertThat(args[1]).isInstanceOf(Optional.class);
+        assertThat(((Optional<Integer>) args[1]).get()).isEqualTo(42);
+    }
+
+    @Test
+    void should_prepare_arguments_with_optional_parameter_not_provided() throws Exception {
+
+        // given
+        class ToolWithOptional {
+            public void tool(String name, Optional<Integer> age) {}
+        }
+
+        Method method = ToolWithOptional.class.getMethod("tool", String.class, Optional.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "Klaus");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        // when
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
+
+        // then
+        assertThat(args).hasSize(2);
+        assertThat(args[0]).isEqualTo("Klaus");
+        assertThat(args[1]).isInstanceOf(Optional.class);
+        assertThat((Optional<?>) args[1]).isEmpty();
+    }
+
+    @SuppressWarnings("unused")
+    public void primitiveTool(String filePath, int startLine, int endLine) {}
+
+    @Test
+    void should_throw_when_required_primitive_is_missing() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "/tmp/foo.txt");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "primitiveTool", arguments, context))
+                .withMessageContaining("Required parameter")
+                .withMessageContaining("arg1")
+                .withMessageContaining("primitiveTool");
+    }
+
+    @Test
+    void should_wrap_missing_required_primitive_into_ToolArgumentsException_when_configured() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                .object(this)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .build();
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("primitiveTool")
+                .arguments("{ \"arg0\": \"/tmp/foo.txt\" }")
+                .build();
+
+        assertThatExceptionOfType(ToolArgumentsException.class)
+                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    static class ToolWithException {
+        @Tool("Tool that throws exception")
+        public String throwingTool(String input) {
+            throw new RuntimeException("Test exception with details");
+        }
+    }
+
+    @Test
+    void should_return_error_result_when_tool_execution_fails() throws Exception {
+        ToolWithException tool = new ToolWithException();
+        Method method = ToolWithException.class.getMethod("throwingTool", String.class);
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(tool, method);
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwingTool")
+                .arguments("{\"arg0\": \"test\"}")
+                .build();
+
+        ToolExecutionResult result =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("Test exception with details");
+    }
+
+    static class AsyncPojo {
+
+        public String name;
+        public int age;
+
+        AsyncPojo(String name, int age) {
+            this.name = name;
+            this.age = age;
+        }
+    }
+
+    static class AsyncResultTools {
+
+        @Tool
+        public CompletableFuture<Void> doNothing() {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Tool
+        public CompletableFuture<String> nullString() {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Tool
+        public CompletableFuture<String> text() {
+            return CompletableFuture.completedFuture("hello");
+        }
+
+        @Tool
+        public CompletableFuture<AsyncPojo> pojo() {
+            return CompletableFuture.completedFuture(new AsyncPojo("Klaus", 42));
+        }
+
+        @Tool
+        public CompletableFuture<Image> image() {
+            return CompletableFuture.completedFuture(
+                    Image.builder().url("http://example.com/cat.png").build());
+        }
+
+        @Tool
+        public CompletableFuture<List<Content>> contents() {
+            return CompletableFuture.completedFuture(List.<Content>of(TextContent.from("a"), TextContent.from("b")));
+        }
+    }
+
+    private ToolExecutionResult executeAsync(String methodName) throws Exception {
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new AsyncResultTools(), AsyncResultTools.class.getDeclaredMethod(methodName));
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name(methodName)
+                .arguments("{}")
+                .build();
+        return executor.executeAsync(request, InvocationContext.builder()
+                        .chatMemoryId("DEFAULT")
+                        .build())
+                .get();
+    }
+
+    @Test
+    void async_tool_returning_future_of_void_yields_success_text() throws Exception {
+        assertThat(executeAsync("doNothing").resultText()).isEqualTo("Success");
+    }
+
+    @Test
+    void async_tool_returning_future_completing_with_null_string_yields_null_text() throws Exception {
+        assertThat(executeAsync("nullString").resultText()).isEqualTo("null");
+    }
+
+    @Test
+    void async_tool_returning_future_of_string() throws Exception {
+        assertThat(executeAsync("text").resultText()).isEqualTo("hello");
+    }
+
+    @Test
+    void async_tool_returning_future_of_pojo_is_json_serialized() throws Exception {
+        ToolExecutionResult result = executeAsync("pojo");
+        assertThat(result.resultText()).contains("Klaus").contains("42");
+        assertThat(result.result()).isInstanceOf(AsyncPojo.class);
+    }
+
+    @Test
+    void async_tool_returning_future_of_image_yields_image_content() throws Exception {
+        ToolExecutionResult result = executeAsync("image");
+        assertThat(result.resultContents()).singleElement().isInstanceOf(ImageContent.class);
+        ImageContent imageContent = (ImageContent) result.resultContents().get(0);
+        assertThat(imageContent.image().url()).hasToString("http://example.com/cat.png");
+    }
+
+    @Test
+    void async_tool_returning_future_of_content_list_yields_those_contents() throws Exception {
+        ToolExecutionResult result = executeAsync("contents");
+        assertThat(result.resultContents())
+                .hasSize(2)
+                .allSatisfy(content -> assertThat(content).isInstanceOf(TextContent.class));
+        assertThat(result.resultContents())
+                .extracting(content -> ((TextContent) content).text())
+                .containsExactly("a", "b");
+    }
+}

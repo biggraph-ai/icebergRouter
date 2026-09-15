@@ -1,0 +1,54 @@
+package dev.langchain4j.model.anthropic;
+
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static java.util.Collections.singletonList;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+@EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
+class AnthropicChatModelListenerIT extends AbstractChatModelListenerIT {
+
+    @Override
+    protected ChatModel createModel(ChatModelListener listener) {
+        return AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName())
+                .temperature(temperature())
+                .maxTokens(maxTokens())
+                .logRequests(true)
+                .logResponses(true)
+                .listeners(singletonList(listener))
+                .build();
+    }
+
+    @Override
+    protected String modelName() {
+        return CLAUDE_HAIKU_4_5_20251001.toString();
+    }
+
+    @Override
+    protected Double topP() {
+        return null;
+    }
+
+    @Override
+    protected ChatModel createFailingModel(ChatModelListener listener) {
+        return AnthropicChatModel.builder()
+                .apiKey("banana")
+                .modelName(modelName())
+                .maxRetries(0)
+                .logRequests(true)
+                .logResponses(true)
+                .listeners(singletonList(listener))
+                .build();
+    }
+
+    @Override
+    protected Class<? extends Exception> expectedExceptionClass() {
+        return dev.langchain4j.exception.AuthenticationException.class;
+    }
+}

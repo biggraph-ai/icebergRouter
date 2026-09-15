@@ -1,0 +1,283 @@
+package dev.langchain4j.model.bedrock;
+
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
+
+public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
+
+    public static final BedrockChatRequestParameters EMPTY =
+            BedrockChatRequestParameters.builder().build();
+
+    private final Map<String, Object> additionalModelRequestFields;
+    private final BedrockCachePointPlacement cachePointPlacement;
+    private final CacheTTL cacheTtl;
+    private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
+    private final BedrockServiceTier serviceTier;
+    private final Map<String, String> requestMetadata;
+
+    private BedrockChatRequestParameters(Builder builder) {
+        super(builder);
+        this.additionalModelRequestFields = copy(builder.additionalModelRequestFields);
+        this.cachePointPlacement = builder.cachePointPlacement;
+        this.cacheTtl = builder.cacheTtl;
+        this.bedrockGuardrailConfiguration = builder.bedrockGuardrailConfiguration;
+        this.serviceTier = builder.serviceTier;
+        this.requestMetadata = copy(builder.requestMetadata);
+    }
+
+    @Override
+    public BedrockChatRequestParameters overrideWith(ChatRequestParameters that) {
+        return BedrockChatRequestParameters.builder()
+                .overrideWith(this)
+                .overrideWith(that)
+                .build();
+    }
+
+    @Override
+    public BedrockChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return BedrockChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
+                .build();
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public Map<String, Object> additionalModelRequestFields() {
+        return additionalModelRequestFields;
+    }
+
+    public BedrockCachePointPlacement cachePointPlacement() {
+        return cachePointPlacement;
+    }
+
+    public CacheTTL cacheTtl() {
+        return cacheTtl;
+    }
+
+    public BedrockGuardrailConfiguration bedrockGuardrailConfiguration() {
+        return bedrockGuardrailConfiguration;
+    }
+
+    public BedrockServiceTier serviceTier() {
+        return serviceTier;
+    }
+
+    public Map<String, String> requestMetadata() {
+        return requestMetadata;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        BedrockChatRequestParameters that = (BedrockChatRequestParameters) o;
+        return Objects.equals(additionalModelRequestFields, that.additionalModelRequestFields)
+                && Objects.equals(cachePointPlacement, that.cachePointPlacement)
+                && Objects.equals(cacheTtl, that.cacheTtl)
+                && Objects.equals(bedrockGuardrailConfiguration, that.bedrockGuardrailConfiguration)
+                && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(requestMetadata, that.requestMetadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                super.hashCode(),
+                additionalModelRequestFields,
+                cachePointPlacement,
+                cacheTtl,
+                bedrockGuardrailConfiguration,
+                serviceTier,
+                requestMetadata);
+    }
+
+    @Override
+    public String toString() {
+        return "BedrockChatRequestParameters{" + "modelName="
+                + modelName() + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", additionalModelRequestFields="
+                + additionalModelRequestFields + ", cachePointPlacement="
+                + cachePointPlacement + ", cacheTtl="
+                + cacheTtl + ", bedrockGuardrailConfiguration="
+                + bedrockGuardrailConfiguration + ", serviceTier="
+                + serviceTier + ", requestMetadata="
+                + (requestMetadata.isEmpty() ? "{}" : "[REDACTED]") + '}';
+    }
+
+    public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
+
+        private Map<String, Object> additionalModelRequestFields;
+        private BedrockCachePointPlacement cachePointPlacement;
+        private CacheTTL cacheTtl;
+        private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
+        private BedrockServiceTier serviceTier;
+        private Map<String, String> requestMetadata;
+
+        @Override
+        public Builder overrideWith(ChatRequestParameters parameters) {
+            super.overrideWith(parameters);
+            if (parameters instanceof BedrockChatRequestParameters bedrockRequestParameters) {
+                // Merge additional model request fields instead of replacing
+                if (bedrockRequestParameters.additionalModelRequestFields != null
+                        && !bedrockRequestParameters.additionalModelRequestFields.isEmpty()) {
+                    if (additionalModelRequestFields == null) {
+                        additionalModelRequestFields = new HashMap<>();
+                    }
+                    additionalModelRequestFields.putAll(bedrockRequestParameters.additionalModelRequestFields);
+                }
+                this.cachePointPlacement =
+                        getOrDefault(bedrockRequestParameters.cachePointPlacement, cachePointPlacement);
+                this.cacheTtl = getOrDefault(bedrockRequestParameters.cacheTtl, cacheTtl);
+                this.bedrockGuardrailConfiguration = getOrDefault(
+                        bedrockRequestParameters.bedrockGuardrailConfiguration, bedrockGuardrailConfiguration);
+                this.serviceTier = getOrDefault(bedrockRequestParameters.serviceTier, serviceTier);
+                this.requestMetadata = getOrDefault(bedrockRequestParameters.requestMetadata, requestMetadata);
+            }
+            return this;
+        }
+
+        public Builder additionalModelRequestFields(Map<String, Object> additionalModelRequestFields) {
+            this.additionalModelRequestFields = additionalModelRequestFields;
+            return this;
+        }
+
+        public Builder additionalModelRequestField(String key, Object value) {
+            if (additionalModelRequestFields == null) {
+                additionalModelRequestFields = new HashMap<>();
+            }
+            additionalModelRequestFields.put(key, value);
+            return this;
+        }
+
+        /**
+         * Sets key-value pairs that can be used to filter Amazon Bedrock model invocation logs.
+         * Do not include personally identifiable information, credentials, or other sensitive data.
+         *
+         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/cost-mgmt-request-metadata.html">Per-request metadata tagging</a>
+         */
+        public Builder requestMetadata(Map<String, String> requestMetadata) {
+            this.requestMetadata = requestMetadata;
+            return this;
+        }
+
+        /**
+         * Enables <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-reasoning.html">reasoning</a>.
+         *
+         * @see BedrockChatModel.Builder#returnThinking(Boolean)
+         * @see BedrockChatModel.Builder#sendThinking(Boolean)
+         */
+        public Builder enableReasoning(Integer tokenBudget) {
+            if (tokenBudget != null) {
+                if (additionalModelRequestFields == null) {
+                    additionalModelRequestFields = new HashMap<>();
+                }
+                Map<?, ?> reasoningConfig =
+                        Map.ofEntries(Map.entry("type", "enabled"), Map.entry("budget_tokens", tokenBudget));
+                additionalModelRequestFields.put("reasoning_config", reasoningConfig);
+            }
+            return this;
+        }
+
+        /**
+         * Enables <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-reasoning.html">adaptive reasoning</a>,
+         * required for Claude Opus 4.7+ where the legacy {@code budget_tokens} reasoning configuration is no longer accepted.
+         * Older models (e.g. Claude Opus 4.6, Sonnet 4.6) continue to work with {@link #enableReasoning(Integer)}.
+         *
+         * @param effort controls reasoning intensity, serialized to Bedrock's {@code output_config.effort} field.
+         *               Accepted values: {@code "low"}, {@code "medium"}, {@code "high"}.
+         *               If {@code null}, only {@code reasoning_config.type = "adaptive"} is set and Bedrock applies its default.
+         * @see BedrockChatModel.Builder#returnThinking(Boolean)
+         * @see BedrockChatModel.Builder#sendThinking(Boolean)
+         */
+        public Builder enableAdaptiveReasoning(String effort) {
+            if (additionalModelRequestFields == null) {
+                additionalModelRequestFields = new HashMap<>();
+            }
+            Map<?, ?> reasoningConfig = Map.ofEntries(Map.entry("type", "adaptive"));
+            additionalModelRequestFields.put("reasoning_config", reasoningConfig);
+
+            if (effort != null) {
+                Map<?, ?> outputConfig = Map.ofEntries(Map.entry("effort", effort));
+                additionalModelRequestFields.put("output_config", outputConfig);
+            }
+            return this;
+        }
+
+        /**
+         * Enables prompt caching and sets where to place the cache point in the conversation.
+         * Cache points mark where to cache content for reuse across API calls.
+         * The cache has a 5-minute TTL by default which resets on each cache hit.
+         * Supported models include Claude 3.5 Sonnet, Claude 3.5 Haiku, Amazon Nova, etc.
+         * This can reduce latency by up to 85% and costs by up to 90% for cached prompts.
+         *
+         * @param placement where to place the cache point (null disables caching)
+         * @return this builder
+         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
+         */
+        public Builder promptCaching(BedrockCachePointPlacement placement) {
+            this.cachePointPlacement = placement;
+            return this;
+        }
+
+        /**
+         * Enables prompt caching with a specific TTL and cache point placement.
+         *
+         * @param placement where to place the cache point (null disables caching)
+         * @param ttl       the cache TTL (null uses the default 5-minute TTL)
+         * @return this builder
+         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
+         */
+        public Builder promptCaching(BedrockCachePointPlacement placement, CacheTTL ttl) {
+            this.cachePointPlacement = placement;
+            this.cacheTtl = ttl;
+            return this;
+        }
+
+        /**
+         * Configuration information for a <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html">guardrail</a>
+         * that you want to use in the request.
+         *
+         * @param bedrockGuardrailConfiguration the configuration details for the guardrail
+         * @return this builder
+         */
+        public Builder guardrailConfiguration(BedrockGuardrailConfiguration bedrockGuardrailConfiguration) {
+            this.bedrockGuardrailConfiguration = bedrockGuardrailConfiguration;
+            return this;
+        }
+
+        /**
+         * Specifies the processing tier type used for serving the request.
+         * @param serviceTier the service tier to tuse
+         * @return this builder
+         */
+        public Builder serviceTier(BedrockServiceTier serviceTier) {
+            this.serviceTier = serviceTier;
+            return this;
+        }
+
+        @Override
+        public BedrockChatRequestParameters build() {
+            return new BedrockChatRequestParameters(this);
+        }
+    }
+}

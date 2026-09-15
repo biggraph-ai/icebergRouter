@@ -1,0 +1,133 @@
+package dev.langchain4j.rag.content.retriever;
+
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchInformationResult;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
+import dev.langchain4j.web.search.WebSearchResults;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.net.URI;
+import java.util.HashMap;
+import java.util.List;
+
+import static java.util.Arrays.asList;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+class WebSearchContentRetrieverTest {
+
+    WebSearchEngine webSearchEngine;
+
+    @BeforeEach
+    void mockWebSearchEngine() {
+        webSearchEngine = mock(WebSearchEngine.class);
+        when(webSearchEngine.search(any(WebSearchRequest.class))).thenReturn(
+                new WebSearchResults(
+                        WebSearchInformationResult.from(3L, 1, new HashMap<>()),
+                        asList(
+                                WebSearchOrganicResult.from("title 1", URI.create("https://one.com"), "snippet 1", null),
+                                WebSearchOrganicResult.from("title 2", URI.create("https://two.com"), null, "content 2"),
+                                WebSearchOrganicResult.from("title 3", URI.create("https://three.com"), "snippet 3", "content 3"),
+                                WebSearchOrganicResult.from("title 4", URI.create("https://four.com"), "snippet 4", "content 4"),
+                                WebSearchOrganicResult.from("title 5", URI.create("https://five.com"), "snippet 5", "content 5")
+                        )
+                )
+        );
+    }
+
+    @AfterEach
+    void resetWebSearchEngine() {
+        reset(webSearchEngine);
+    }
+
+    @Test
+    void should_retrieve_web_pages_back() {
+
+        // given
+        ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(webSearchEngine)
+                .build();
+
+        Query query = Query.from("query");
+
+        // when
+        List<Content> contents = contentRetriever.retrieve(query);
+
+        // then
+        assertThat(contents).containsExactly(
+                Content.from(TextSegment.from("title 1\nsnippet 1", Metadata.from("url", "https://one.com"))),
+                Content.from(TextSegment.from("title 2\ncontent 2", Metadata.from("url", "https://two.com"))),
+                Content.from(TextSegment.from("title 3\ncontent 3", Metadata.from("url", "https://three.com"))),
+                Content.from(TextSegment.from("title 4\ncontent 4", Metadata.from("url", "https://four.com"))),
+                Content.from(TextSegment.from("title 5\ncontent 5", Metadata.from("url", "https://five.com")))
+        );
+
+        verify(webSearchEngine).search(WebSearchRequest.builder().searchTerms(query.text()).maxResults(5).build());
+        verifyNoMoreInteractions(webSearchEngine);
+    }
+
+    @Test
+    void retrieveAsync_should_retrieve_web_pages_over_searchAsync() throws Exception {
+
+        // given
+        WebSearchResults results = new WebSearchResults(
+                WebSearchInformationResult.from(1L, 1, new HashMap<>()),
+                asList(WebSearchOrganicResult.from("title 1", URI.create("https://one.com"), "snippet 1", null)));
+
+        WebSearchEngine asyncEngine = mock(WebSearchEngine.class);
+        when(asyncEngine.searchAsync(any(WebSearchRequest.class))).thenReturn(completedFuture(results));
+
+        ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(asyncEngine)
+                .build();
+
+        Query query = Query.from("query");
+
+        // when
+        List<Content> contents = contentRetriever.retrieveAsync(query).get(5, SECONDS);
+
+        // then
+        assertThat(contents).containsExactly(
+                Content.from(TextSegment.from("title 1\nsnippet 1", Metadata.from("url", "https://one.com"))));
+
+        verify(asyncEngine).searchAsync(WebSearchRequest.builder().searchTerms(query.text()).maxResults(5).build());
+        verifyNoMoreInteractions(asyncEngine);
+    }
+
+    @Test
+    void retrieveAsync_should_fail_loudly_when_engine_is_not_async() {
+
+        // A web search engine that implements only the blocking search, leaving searchAsync as the throwing default
+        WebSearchEngine blockingOnly = request -> new WebSearchResults(
+                WebSearchInformationResult.from(0L, 1, new HashMap<>()), asList());
+
+        ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(blockingOnly)
+                .build();
+
+        // when-then: the non-async engine surfaces loudly, but through the returned future (R6b) - not a synchronous
+        // throw - so a caller composing on retrieveAsync(...) always has a single error channel
+        java.util.concurrent.CompletableFuture<List<Content>> future = contentRetriever.retrieveAsync(Query.from("query"));
+        assertThatThrownBy(() -> future.get(5, java.util.concurrent.TimeUnit.SECONDS))
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .cause()
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
+                .hasMessageContaining("searchAsync");
+    }
+}

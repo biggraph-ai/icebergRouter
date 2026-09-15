@@ -1,0 +1,594 @@
+package dev.langchain4j.agentic.a2a;
+
+import static dev.langchain4j.agentic.a2a.Models.baseModel;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.a2a.Agents.CreativeWriter;
+import dev.langchain4j.agentic.a2a.Agents.DeclarativeA2ACreativeWriter;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithCustomizedWriter;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithUrlSupplier;
+import dev.langchain4j.agentic.a2a.Agents.StreamingA2ATester;
+import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
+import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
+import dev.langchain4j.agentic.a2a.Agents.StyleScorer;
+import dev.langchain4j.agentic.a2a.Agents.StyledWriter;
+import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.observability.A2AStreamingClientListenerResult;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
+import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
+import dev.langchain4j.agentic.supervisor.SupervisorAgent;
+import dev.langchain4j.service.V;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.TaskUpdateEvent;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.spec.Task;
+import org.a2aproject.sdk.spec.TaskArtifactUpdateEvent;
+import org.a2aproject.sdk.spec.TaskState;
+import org.a2aproject.sdk.spec.TaskStatusUpdateEvent;
+import org.a2aproject.sdk.spec.UpdateEvent;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+public class A2AAgentIT {
+
+    static final String A2A_SERVER_URL = "http://localhost:8080";
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_TaskStatusUpdateEvent_tests() {
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskStatusUpdateEvent taskStatusUpdateEvent
+                            && taskStatusUpdateEvent.status().state() == TaskState.TASK_STATE_WORKING) {
+                        return A2AStreamingClientListenerResult.stopWithResponse(
+                                "stop when status update to TASK_STATE_WORKING");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("stop when status update to TASK_STATE_WORKING");
+    }
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_TaskArtifactUpdateEvent_tests() {
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    Task task = event.getTask();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent
+                            && task.artifacts() != null
+                            && task.artifacts().size() >= 2) {
+                        return A2AStreamingClientListenerResult.stopWithCurrentArtifacts();
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("artifact1\nartifact2");
+    }
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_stopWithResponse_tests() {
+        AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent) {
+                        taskArtifactUpdateEventCount.incrementAndGet();
+                        return A2AStreamingClientListenerResult.stopWithResponse("get artifact, stop streaming");
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+        String s = result.agenticScope().readState("result", "");
+
+        assertThat(s).isEqualTo("get artifact, stop streaming");
+        assertThat(taskArtifactUpdateEventCount).hasValue(1);
+    }
+
+    @Test
+    @Disabled("Requires streaming A2A server to be running")
+    void streaming_a2a_agent_stopWithNullResponse_tests() {
+        AtomicInteger taskArtifactUpdateEventCount = new AtomicInteger(0);
+        ResultWithAgenticScope<String> result = AgenticServices.a2aBuilder(A2A_SERVER_URL, StreamingA2ATester.class)
+                .outputKey("result")
+                .streamingClientListener((TaskUpdateEvent event) -> {
+                    UpdateEvent updateEvent = event.getUpdateEvent();
+                    if (updateEvent instanceof TaskArtifactUpdateEvent) {
+                        taskArtifactUpdateEventCount.incrementAndGet();
+                        return A2AStreamingClientListenerResult.stopWithResponse(null);
+                    }
+                    return A2AStreamingClientListenerResult.continueStreaming();
+                })
+                .build()
+                .test("test");
+
+        assertThat(result.result()).isEqualTo("");
+        assertThat(result.agenticScope().readState("result", "")).isEmpty();
+        assertThat(taskArtifactUpdateEventCount).hasValue(1);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_agent_loop_tests() {
+        class WriterListener implements AgentListener {
+            Object requestedTopic;
+
+            @Override
+            public void beforeAgentInvocation(final AgentRequest request) {
+                requestedTopic = request.inputs().get("topic");
+            }
+        }
+
+        WriterListener writerListener = new WriterListener();
+
+        UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+                .listener(writerListener)
+                .inputKeys("topic")
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(baseModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(writerListener.requestedTopic).isEqualTo("dragons and wizards");
+    }
+
+    public interface A2ACreativeWriter {
+
+        @Agent
+        String generateStory(@V("topic") String topic);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_agent_supervisor_tests() {
+        A2ACreativeWriter creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(baseModel())
+                .outputKey("score")
+                .build();
+
+        Agents.StyleReviewLoop styleReviewLoop = AgenticServices.loopBuilder(StyleReviewLoop.class)
+                .subAgents(styleScorer, styleEditor)
+                .outputKey("story")
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        SupervisorAgent styledWriter = AgenticServices.supervisorBuilder()
+                .chatModel(Models.plannerModel())
+                .subAgents(creativeWriter, styleReviewLoop)
+                .maxAgentsInvocations(5)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result =
+                styledWriter.invokeWithAgenticScope("Write a story about dragons and wizards in the style of a comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        DefaultAgenticScope agenticScope = (DefaultAgenticScope) result.agenticScope();
+        assertThat(agenticScope.readState("topic", "")).contains("dragons and wizards");
+        assertThat(agenticScope.readState("style", "")).contains("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+
+        assertThat(agenticScope.agentInvocations("Creative Writer")).hasSize(1);
+
+        List<AgentInvocation> scoreAgentCalls = agenticScope.agentInvocations("scoreStyle");
+        assertThat(scoreAgentCalls).hasSizeBetween(1, 5);
+        System.out.println("Score agent invocations: " + scoreAgentCalls);
+        assertThat((Double) scoreAgentCalls.get(scoreAgentCalls.size() - 1).output())
+                .isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_sequence_and_loop_tests() {
+        StoryCreatorWithReview storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithReview.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_single_a2a_agent_tests() {
+        DeclarativeA2ACreativeWriter writer =
+                AgenticServices.createAgenticSystem(DeclarativeA2ACreativeWriter.class, baseModel());
+
+        String story = writer.generateStory("dragons and wizards");
+        assertThat(story).isNotBlank();
+    }
+
+    public interface A2AStyleScorer {
+
+        @Agent
+        double scoreStyle(@V("story") String story, @V("style") String style);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_structured_output_tests() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        A2AStyleScorer styleScorer = AgenticServices.a2aBuilder(A2A_SERVER_URL, A2AStyleScorer.class)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    static final String SCORER_TENANT = "scorer";
+
+    /**
+     * URL of the scorer A2A agent card. The scorer is hosted at a sub-path on the same server,
+     * allowing the server to route to the correct agent implementation.
+     */
+    static final String SCORER_AGENT_CARD_URL = A2A_SERVER_URL;
+
+    /**
+     * A style-scorer agent hosted as an A2A service.
+     * <p>
+     * The {@code @A2ATenantId @V("tenant")} parameter is populated from the agentic scope:
+     * when the outer workflow seeds {@code "tenant" = "scorer"} into the scope, every call to
+     * this agent automatically carries that tenant on the outgoing {@link org.a2aproject.sdk.spec.MessageSendParams},
+     * routing the request to the correct tenant on a multi-tenant A2A server.
+     */
+    public interface TenantedA2AStyleScorer {
+
+        @Agent
+        double scoreStyle(@V("story") String story, @V("style") String style, @A2ATenantId @V("tenant") String tenant);
+    }
+
+    /**
+     * A workflow whose signature passes the tenant down into the agentic scope so that
+     * {@link TenantedA2AStyleScorer} can pick it up via {@code @A2ATenantId @V("tenant")}.
+     */
+    public interface StyledWriterWithTenant extends dev.langchain4j.agentic.scope.AgenticScopeAccess {
+
+        @Agent
+        ResultWithAgenticScope<String> writeStoryWithStyle(
+                @V("topic") String topic, @V("style") String style, @V("tenant") String tenant);
+    }
+
+    /**
+     * Integration test for a style-review pipeline where the scorer runs as a tenanted A2A agent.
+     *
+     * <p>The creative writer runs as an A2A agent at the default server endpoint; the style editor
+     * runs locally; the style scorer is an external A2A service reached via {@link #SCORER_AGENT_CARD_URL}.
+     * The tenant {@code "scorer"} is injected into the agentic scope by the outer
+     * {@link StyledWriterWithTenant} and flows automatically to the scorer via
+     * {@code @A2ATenantId @V("tenant")}.
+     *
+     * <p>Requires: A2A server running on port 8080 with:
+     * <ul>
+     *   <li>a creative writer agent at the default endpoint ({@code /.well-known/agent-card.json})</li>
+     *   <li>a scorer agent reachable at {@code /.well-known/scorer/agent-card.json}</li>
+     * </ul>
+     */
+    @Test
+    @Disabled("Requires A2A server with scorer endpoint at /.well-known/scorer/agent-card.json and")
+    void a2a_agent_with_tenanted_scorer() {
+        TenantedA2AStyleScorer styleScorer = new DefaultA2AClientBuilder<>(
+                        SCORER_AGENT_CARD_URL, TenantedA2AStyleScorer.class, SCORER_TENANT)
+                .outputKey("score")
+                .build();
+
+        DeclarativeA2ACreativeWriter creativeWriter =
+                AgenticServices.createAgenticSystem(DeclarativeA2ACreativeWriter.class, baseModel());
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriterWithTenant styledWriter = AgenticServices.sequenceBuilder(StyledWriterWithTenant.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result =
+                styledWriter.writeStoryWithStyle("dragons and wizards", "comedy", SCORER_TENANT);
+        String story = result.result();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    static final String A2A_ECHO_SERVER_URL = "http://localhost:8081";
+
+    public interface EchoWithAgenticScopAgent {
+
+        @A2AClientAgent(
+                a2aServerUrl = A2A_ECHO_SERVER_URL,
+                outputKey = "response",
+                description = "Echo agent for testing contextId/taskId propagation")
+        ResultWithAgenticScope<String> echo(
+                @V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
+    }
+
+    /**
+     * Test for issue #5311: verifies that @A2AContextId and @A2ATaskId parameters
+     * are set on the A2A Message envelope instead of becoming TextParts.
+     *
+     * The test does a two-turn conversation:
+     *   1st turn: null contextId/taskId → server generates them, returned in the AgenticScope
+     *   2nd turn: reuses those IDs via @A2AContextId/@A2ATaskId → server finds the existing task
+     *
+     * Requires: a2a-echo-server running on port 8081
+     *   cd langchain4j-agentic-a2a/a2a-echo-server
+     *   mvn quarkus:dev
+     */
+    @Test
+    @Disabled("Requires a2a-echo-server to be running on port 8081")
+    void a2a_client_agent_should_propagate_contextId_and_taskId_on_message_envelope() {
+        EchoWithAgenticScopAgent echoAgent = AgenticServices.a2aBuilder(
+                        A2A_ECHO_SERVER_URL, EchoWithAgenticScopAgent.class)
+                .outputKey("response")
+                .build();
+
+        // FIRST TURN: no contextId/taskId → server creates new task and context
+        ResultWithAgenticScope<String> firstResult = echoAgent.echo("hello", null, null);
+        System.out.println("First response: " + firstResult.result());
+        assertThat(firstResult.result()).contains("input=hello");
+
+        // Read server-generated IDs from the AgenticScope
+        AgenticScope firstScope = firstResult.agenticScope();
+        String serverContextId = (String) firstScope.readState("contextId");
+        String serverTaskId = (String) firstScope.readState("taskId");
+        assertThat(serverContextId).isNotNull();
+        assertThat(serverTaskId).isNotNull();
+
+        // SECOND TURN: pass the server-generated IDs to continue the conversation
+        // Without the fix this throws TaskNotFoundError because the IDs end up as TextParts
+        ResultWithAgenticScope<String> secondResult =
+                echoAgent.echo("follow-up question", serverContextId, serverTaskId);
+        System.out.println("Second response: " + secondResult.result());
+
+        // The server should resolve to the same context and task
+        AgenticScope secondScope = secondResult.agenticScope();
+        assertThat(secondScope.readState("contextId", "")).isEqualTo(serverContextId);
+        assertThat(secondScope.readState("taskId", "")).isEqualTo(serverTaskId);
+        assertThat(secondResult.result()).contains("input=follow-up question");
+    }
+
+    public interface EchoAgent {
+
+        @A2AClientAgent(
+                a2aServerUrl = A2A_ECHO_SERVER_URL,
+                outputKey = "response",
+                description = "Echo sub-agent for multi-turn workflow")
+        String echo(
+                @V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
+    }
+
+    public interface MultiTurnWorkflow extends AgenticScopeAccess {
+
+        @Agent
+        ResultWithAgenticScope<String> converse(@V("question") String question);
+    }
+
+    /**
+     * Tests @A2AContextId/@A2ATaskId in a complete workflow-based agentic system.
+     *
+     * A sequence of two echo agents where:
+     *   1st agent: sends message with no contextId/taskId → server generates them → written to scope
+     *   2nd agent: reads contextId/taskId from scope → sends them on the message envelope → server
+     *              finds the existing task and continues the conversation
+     *
+     * This proves contextId/taskId flow through the AgenticScope across agents in a workflow.
+     *
+     * Requires: a2a-echo-server running on port 8081
+     */
+    @Test
+    @Disabled("Requires a2a-echo-server to be running on port 8081")
+    void a2a_multi_turn_sequence_should_propagate_contextId_and_taskId_through_scope() {
+        EchoAgent firstTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
+                .outputKey("firstResponse")
+                .build();
+
+        EchoAgent secondTurn = AgenticServices.a2aBuilder(A2A_ECHO_SERVER_URL, EchoAgent.class)
+                .outputKey("secondResponse")
+                .build();
+
+        MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.class)
+                .subAgents(firstTurn, secondTurn)
+                .outputKey("secondResponse")
+                .build();
+
+        ResultWithAgenticScope<String> result = workflow.converse("hello");
+        AgenticScope scope = result.agenticScope();
+
+        // contextId and taskId should have been written to the scope by the first agent
+        // and reused by the second agent via @A2AContextId/@A2ATaskId
+        String contextId = (String) scope.readState("contextId");
+        String taskId = (String) scope.readState("taskId");
+        assertThat(contextId).isNotNull();
+        assertThat(taskId).isNotNull();
+
+        // The second response proves the IDs were correctly propagated through the scope:
+        // if they weren't, the server would have created a new task instead of continuing
+        assertThat(result.result())
+                .contains("contextId=" + contextId)
+                .contains("taskId=" + taskId)
+                .contains("input=hello");
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_agent_with_programmatic_client_customizer() {
+        UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+                .clientCustomizer((ClientBuilder cb) ->
+                        cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()))
+                .inputKeys("topic")
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(baseModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_a2a_agent_with_url_supplier() {
+        StoryCreatorWithUrlSupplier storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithUrlSupplier.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_a2a_agent_with_customizer() {
+        StoryCreatorWithCustomizedWriter storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithCustomizedWriter.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+}

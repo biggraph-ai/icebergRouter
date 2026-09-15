@@ -1,0 +1,89 @@
+package dev.langchain4j.mcp.client;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.UserMessage;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Test for converting PromptMessage as returned from MCP servers to instances
+ * of ChatMessage from the core langchain4j API.
+ */
+class PromptContentConversionTest {
+
+    @Test
+    void shouldRejectResponseWithoutResult() {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":1}
+                """;
+
+        assertThatThrownBy(() -> PromptsHelper.parsePromptContents(response))
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'result' element");
+    }
+
+    @Test
+    void shouldRejectResponseWithoutMessages() {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":1,"result":{}}
+                """;
+
+        assertThatThrownBy(() -> PromptsHelper.parsePromptContents(response))
+                .isInstanceOf(IllegalResponseException.class)
+                .hasMessage("Result does not contain 'messages' element");
+    }
+
+    @Test
+    void userMessageWithText() throws JsonProcessingException {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":111,"result":{"messages":[{"role":"user","content":{"text":"Hello","type":"text"}}]}}
+                """;
+
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(response);
+
+        ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
+        assertThat(chatMessage).isInstanceOf(UserMessage.class);
+        assertThat(((UserMessage) chatMessage).singleText()).isEqualTo("Hello");
+    }
+
+    @Test
+    void aiMessageWithText() throws JsonProcessingException {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":123,"result":{"messages":[{"role":"assistant","content":{"text":"Hello","type":"text"}}]}}
+                """;
+
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(response);
+
+        ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
+        assertThat(chatMessage).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) chatMessage).text()).isEqualTo("Hello");
+    }
+
+    @Test
+    void userMessageWithImage() throws JsonProcessingException {
+        // language=JSON
+        String response = """
+                {"jsonrpc":"2.0","id":1,"result":{"messages":[{"role":"user","content":{"data":"aaa","mimeType":"image/png","type":"image"}}]}}
+                """;
+
+        McpGetPromptResult promptResponse = PromptsHelper.parsePromptContents(response);
+
+        ChatMessage chatMessage = promptResponse.messages().get(0).toChatMessage();
+        assertThat(chatMessage).isInstanceOf(UserMessage.class);
+        Content content = ((UserMessage) chatMessage).contents().get(0);
+        assertThat(content).isInstanceOf(ImageContent.class);
+        ImageContent imageContent = (ImageContent) content;
+        assertThat(imageContent.image().base64Data()).isEqualTo("aaa");
+        assertThat(imageContent.image().mimeType()).isEqualTo("image/png");
+    }
+}

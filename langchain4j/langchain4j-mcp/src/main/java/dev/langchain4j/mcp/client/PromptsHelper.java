@@ -1,0 +1,41 @@
+package dev.langchain4j.mcp.client;
+
+import dev.langchain4j.mcp.client.transport.McpJson;
+import dev.langchain4j.mcp.protocol.McpGetPromptResponse;
+import dev.langchain4j.mcp.protocol.McpListPromptsResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+class PromptsHelper {
+
+    private static final Logger log = LoggerFactory.getLogger(PromptsHelper.class);
+
+    static McpPage<McpPrompt> parsePromptRefs(String mcpMessage) {
+        McpListPromptsResult.Result result =
+                McpJson.deserialize(mcpMessage, McpListPromptsResult.class).getResult();
+        if (result == null) {
+            log.warn("Result does not contain 'result' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'result' element");
+        }
+        if (result.getPrompts() == null) {
+            log.warn("Result does not contain 'prompts' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'prompts' element");
+        }
+        return new McpPage<>(result.getPrompts(), result.getNextCursor());
+    }
+
+    static McpGetPromptResult parsePromptContents(String mcpMessage) {
+        McpErrorHelper.checkForErrors(mcpMessage);
+        McpGetPromptResult result =
+                McpJson.deserialize(mcpMessage, McpGetPromptResponse.class).getResult();
+        if (result == null) {
+            log.warn("Result does not contain 'result' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'result' element");
+        }
+        if (result.messages() == null) {
+            log.warn("Result does not contain 'messages' element: {}", mcpMessage);
+            throw new IllegalResponseException("Result does not contain 'messages' element");
+        }
+        return result;
+    }
+}
