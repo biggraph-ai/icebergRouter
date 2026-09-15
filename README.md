@@ -40,5 +40,14 @@ Read `AGENTS.md`, then `STUDY_ORDER.md`. Use the first prompt in `HANDOFF_PROMPT
 
 The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited.docx`. Keep that original nearby; it is not redistributed or rewritten here. `requirements/PLAN_CONSTRAINTS.md` is a working synthesis of the decisions in this conversation, not a verbatim copy of that document.
 
+## Product implementation workspace
+
+Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
+`iceberg/`. The current Increment 0 scaffold establishes package and dependency
+boundaries only. It deliberately contains no router, budget ledger, provider
+integration, or Iceberg acquisition policy. See `iceberg/ARCHITECTURE.md` before
+adding product code. Reference directories must remain unchanged and must not be
+imported as runtime packages.
+
 ## Validation
 Run `python -m unittest discover -s tests -v` for the downloader's local tests. See `TEST_STATUS.md` for what was actually tested. No upstream build or paper-result reproduction is claimed.
