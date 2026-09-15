@@ -3,8 +3,8 @@
 Increment 2 implements the single-host SQLite reservation, authorization, pending,
 and settlement lifecycle in `src/iceberg_router/core`. The local invariant applies
 only to liabilities submitted to this authority under valid upper bounds. Provider
-bound validation, complete billable-action interception, and the append-only audit
-journal remain later executor, adapter, and journaling work.
+bound validation and complete billable-action interception remain later adapter
+work.
 
 Increment 3 also computes a checked structural maximum over every legal acyclic
 option path, multiplying each operation's per-attempt liability by its maximum
@@ -67,6 +67,8 @@ cap is insufficient when other charge components are unbounded or undocumented.
 Authorization and balance update require a transactional compare-and-write or an
 equivalent serializable single-writer protocol. Atomic file replacement alone does
 not prevent two readers from reserving the same funds. Increment 2 persists current
-accounting records transactionally and reconstructs balances after restart. The
-separate immutable audit journal and replay-from-events gate remain Increment 5
-work and must be completed before claiming that stronger recovery property.
+accounting records transactionally and reconstructs balances after restart.
+Increment 5 adds a separate immutable, hash-chained journal with restart and chain
+verification. It does not atomically commit with ledger transitions and does not
+reconstruct authoritative balances from journal events, so it must not be used to
+claim event-sourced accounting or crash-gap-free audit coverage.

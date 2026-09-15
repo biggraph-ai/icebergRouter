@@ -11,9 +11,10 @@ provenance, license, isolated environment, and behavior have been reviewed.
 Increment 0 established the module boundaries, Increment 1 implemented portable
 contracts, Increment 2 implemented the single-host SQLite ledger and admission
 governor, Increment 3 implemented bounded conditional option definitions and
-static validation, and Increment 4 implements guarded graph execution against
-injected adapters. Real provider transport and selection remain deferred to their
-separately reviewed increments.
+static validation, Increment 4 implements guarded graph execution against injected
+adapters, and Increment 5 implements a durable append-only audit journal. Real
+provider transport and selection remain deferred to their separately reviewed
+increments.
 
 ## Dependency direction
 
@@ -56,7 +57,7 @@ transport independently testable.
 | `core.governor` | Upper-liability admission and authorization | Increment 2 — implemented |
 | `core.graph` | Validation of bounded conditional graphs | Increment 3 — implemented |
 | `core.executor` | Authorized graph execution and attempt tracing | Increment 4 — implemented |
-| `core.journal` | Append-only audit records | Increment 5 |
+| `core.journal` | Append-only hash-chained audit records | Increment 5 — implemented |
 | `policies.fixed` | Fixed-option selection control | Increment 6 |
 | `policies.task_rule` | Deterministic task-rule control | Increment 6 |
 | `policies.random_mixture` | Seeded logged-propensity control | Increment 6 |
@@ -70,3 +71,10 @@ but no external provider bound, cancellation, or timeout behavior has been
 validated. It performs no real model call, embedding, retrieval, deserialization,
 dataset access, or benchmark evaluation. It contains no WISERouter or Iceberg
 acquisition algorithm. Those claims require their later acceptance gates.
+
+The Increment 5 journal serializes concurrent writers, rejects row mutation, and
+detects in-place changes by replaying its SHA-256 hash chain. A hash chain is not a
+signature or external transparency log: an actor with database and schema control
+can rewrite the chain. Journal writes are not transactionally coupled to ledger
+mutations or provider calls, so the ledger remains authoritative and crash-gap
+reconciliation is still required.

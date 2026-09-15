@@ -11,6 +11,17 @@ from .executor import (
 )
 from .governor import AdmissionRequest, AuthorizedAttempt, BoundUnavailable, BudgetGovernor
 from .graph import GraphValidationError, ValidatedOption, validate_option
+from .journal import (
+    GENESIS_HASH,
+    JournalAppendResult,
+    JournalConflict,
+    JournalEntry,
+    JournalError,
+    JournalEventType,
+    JournalIntegrityError,
+    JournalRecord,
+    SQLiteAuditJournal,
+)
 from .ledger import (
     AdmissionDenied,
     AuthorizationRecord,
@@ -43,13 +54,22 @@ __all__ = (
     "ExecutorConfigurationError",
     "InvalidTransition",
     "GraphValidationError",
+    "GENESIS_HASH",
     "LedgerError",
+    "JournalAppendResult",
+    "JournalConflict",
+    "JournalEntry",
+    "JournalError",
+    "JournalEventType",
+    "JournalIntegrityError",
+    "JournalRecord",
     "OperationContext",
     "OperationResult",
     "OptionExecutor",
     "ReservationRecord",
     "ReservationState",
     "SQLiteBudgetLedger",
+    "SQLiteAuditJournal",
     "SettlementResult",
     "ValidatedOption",
     "validate_option",

@@ -3,7 +3,7 @@
 This directory is the Iceberg-owned implementation workspace. The top-level
 reference repositories remain evidence and are not runtime dependencies.
 
-## Current status: Increment 4
+## Current status: Increment 5
 
 Increment 0 established package ownership and dependency boundaries. Increment 1
 implemented portable contracts. Increment 2 added the SQLite liability ledger and
@@ -12,7 +12,10 @@ validation. Increment 4 executes validated graphs through injected adapters,
 authorizes every physical attempt, records realized branches, and reconciles known
 or pending usage. It still does **not** include a real provider adapter, reproduce
 an upstream baseline, select a routing policy, or implement the Iceberg acquisition
-policy.
+policy. Increment 5 adds a durable, immutable SQLite audit journal with atomic
+batches, idempotent replay, explicit correction links, and hash-chain verification.
+It does not make ledger and journal writes one distributed transaction, and its
+hash chain provides tamper evidence rather than external authenticity.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
@@ -27,7 +30,7 @@ Detailed import rules and deferred work are recorded in
 
 ## Local validation
 
-No installation is necessary for the Increment 0 through Increment 4 checks:
+No installation is necessary for the Increment 0 through Increment 5 checks:
 
 ```sh
 python -m unittest discover -s tests -v
@@ -38,5 +41,7 @@ and dependency direction; contract tests cover strict validation, immutable valu
 checked arithmetic, explicit unknown states, and JSON round trips. Passing them
 Increment 2 tests exercise the ledger against temporary local SQLite databases.
 Increment 3 tests validate graph structure and bounds. Increment 4 runs guarded
-conditional traces against deterministic scripted adapters. Passing them does not
-validate an external provider or routing policy.
+conditional traces against deterministic scripted adapters. Increment 5 tests
+exercise concurrent journal writers, restart, idempotency, corrections, immutable
+rows, canonical payloads, and tamper detection. Passing them does not validate an
+external provider or routing policy.
