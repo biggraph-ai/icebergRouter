@@ -1,4 +1,4 @@
-# Increment 0 architecture boundary
+# IcebergRouter architecture boundary
 
 ## Authority and scope
 
@@ -8,9 +8,9 @@ The six core reference repositories and later architecture references are never
 imported by the product package. An upstream adapter may be added only after its
 provenance, license, isolated environment, and behavior have been reviewed.
 
-Increment 0 deliberately contains no operational API. Empty modules reserve the
-reviewed responsibility boundaries without inventing request schemas or behavior
-that belongs to later increments.
+Increment 0 established the module boundaries. Increment 1 implements only the
+portable contract layer; runtime authority, admission, execution, and selection
+remain deferred to their separately reviewed increments.
 
 ## Dependency direction
 
@@ -43,12 +43,12 @@ transport independently testable.
 
 | Module | Reserved responsibility | First behavior-owning increment |
 |---|---|---|
-| `contracts.money` | Exact fixed-unit money and portable decimal strings | Increment 1 |
-| `contracts.identifiers` | Immutable request/decision/attempt identities | Increment 1 |
-| `contracts.decisions` | Eligibility, selection probability, and versions | Increment 1 |
+| `contracts.money` | Exact fixed-unit money and portable decimal strings | Increment 1 — implemented |
+| `contracts.identifiers` | Immutable request/decision/attempt identities | Increment 1 — implemented |
+| `contracts.decisions` | Eligibility, selection probability, and versions | Increment 1 — implemented |
 | `contracts.options` | Bounded conditional option definitions | Increment 3 |
-| `contracts.events` | Decision, authorization, execution, and usage events | Increment 1 |
-| `contracts.feedback` | Separate preference and objective observations | Increment 1 |
+| `contracts.events` | Execution and usage events with attempt identities | Increment 1 — implemented |
+| `contracts.feedback` | Separate preference, objective, and checker observations | Increment 1 — implemented |
 | `core.ledger` | Durable reservation and settlement state | Increment 2 |
 | `core.governor` | Upper-liability admission and authorization | Increment 2 |
 | `core.graph` | Validation of bounded conditional graphs | Increment 3 |
@@ -62,7 +62,7 @@ transport independently testable.
 
 ## Non-goals
 
-This scaffold provides no strict-budget guarantee by itself. It performs no model
+The contract layer provides no strict-budget guarantee by itself. It performs no model
 calls, retries, embedding, retrieval, verification, deserialization, dataset
 access, or benchmark evaluation. In particular, it contains no WISERouter or
 Iceberg acquisition algorithm. Those claims require their later acceptance gates.

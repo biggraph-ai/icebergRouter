@@ -14,6 +14,7 @@ sys.path.insert(0, str(SRC))
 EXPECTED_MODULES = {
     "iceberg_router",
     "iceberg_router.contracts",
+    "iceberg_router.contracts._validation",
     "iceberg_router.contracts.decisions",
     "iceberg_router.contracts.events",
     "iceberg_router.contracts.feedback",
@@ -35,7 +36,7 @@ EXPECTED_MODULES = {
 }
 
 ALLOWED_ICEBERG_IMPORTS = {
-    "contracts": set(),
+    "contracts": {"contracts"},
     "core": {"contracts"},
     "policies": {"contracts"},
     "adapters": {"contracts"},
@@ -62,7 +63,7 @@ def imported_iceberg_layers(path: Path) -> set[str]:
             names.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             if node.level:
-                anchor = current[:-1]
+                anchor = current if path.name == "__init__.py" else current[:-1]
                 prefix = anchor[: len(anchor) - node.level + 1]
                 absolute = ".".join(prefix + ((node.module or "").split(".")))
                 names.append(absolute.rstrip("."))
@@ -95,7 +96,7 @@ class IncrementZeroStructureTests(unittest.TestCase):
             with self.subTest(path=str(relative)):
                 self.assertLessEqual(actual, allowed)
 
-    def test_scaffold_has_no_runtime_dependencies(self):
+    def test_scaffold_has_no_third_party_runtime_dependencies(self):
         for path in PACKAGE.rglob("*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             imports = []
@@ -106,8 +107,13 @@ class IncrementZeroStructureTests(unittest.TestCase):
                     imports.append(node.module)
             with self.subTest(path=str(path.relative_to(PACKAGE))):
                 self.assertTrue(
-                    all(name == "iceberg_router" or name.startswith("iceberg_router.") for name in imports),
-                    f"Increment 0 module imports a runtime dependency: {imports}",
+                    all(
+                        name.split(".")[0] in sys.stdlib_module_names
+                        or name == "iceberg_router"
+                        or name.startswith("iceberg_router.")
+                        for name in imports
+                    ),
+                    f"product module imports a third-party runtime dependency: {imports}",
                 )
 
     def test_reference_directories_are_outside_product_package(self):

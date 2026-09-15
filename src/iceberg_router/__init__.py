@@ -1,7 +1,7 @@
 """IcebergRouter's Python authority.
 
-Increment 0 defines package boundaries only.  No routing or accounting behavior is
-exported from the package root.
+Increment 1 provides portable contracts. Routing and accounting behavior remains
+deferred to later increments and is not exported from the package root.
 """
 
 __all__: tuple[str, ...] = ()

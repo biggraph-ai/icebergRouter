@@ -3,11 +3,13 @@
 This directory is the Iceberg-owned implementation workspace. The top-level
 reference repositories remain evidence and are not runtime dependencies.
 
-## Increment 0 status
+## Current status: Increment 1
 
-Increment 0 establishes package ownership and dependency boundaries only. It does
-**not** implement a router, ledger, provider call, upstream reproduction, or the
-Iceberg acquisition policy.
+Increment 0 established package ownership and dependency boundaries. Increment 1
+implements the portable contract layer: checked fixed-unit money, immutable typed
+identifiers, routing decision records, execution/usage events, and independent
+feedback observations. It still does **not** implement a router, ledger, provider
+call, upstream reproduction, or the Iceberg acquisition policy.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
@@ -22,12 +24,13 @@ Detailed import rules and deferred work are recorded in
 
 ## Local validation
 
-No installation is necessary for the Increment 0 checks:
+No installation is necessary for the Increment 0 and Increment 1 checks:
 
 ```sh
 python -m unittest discover -s tests -v
 ```
 
-The structural tests add `src/` to their import path and verify the package layout
-and dependency direction. Passing them proves only that the scaffold respects the
-declared boundaries.
+The tests add `src/` to their import path. Structural tests verify package layout
+and dependency direction; contract tests cover strict validation, immutable values,
+checked arithmetic, explicit unknown states, and JSON round trips. Passing them
+does not validate a ledger, executor, provider, or routing policy.

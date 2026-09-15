@@ -43,8 +43,8 @@ The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited
 ## Product implementation workspace
 
 Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
-`iceberg/`. The current Increment 0 scaffold establishes package and dependency
-boundaries only. It deliberately contains no router, budget ledger, provider
+`iceberg/`. Increment 0 established package boundaries, and Increment 1 implements
+portable values and records only. There is still no router, budget ledger, provider
 integration, or Iceberg acquisition policy. See `iceberg/ARCHITECTURE.md` before
 adding product code. Reference directories must remain unchanged and must not be
 imported as runtime packages.
