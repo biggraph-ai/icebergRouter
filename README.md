@@ -43,9 +43,9 @@ The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited
 ## Product implementation workspace
 
 Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
-`iceberg/`. Increments 0–2 established boundaries, portable contracts, and the
-single-host budget authority. Increment 3 implements bounded conditional-option
-definitions and static graph validation. There is still no option executor,
+`iceberg/`. Increments 0–3 established boundaries, portable contracts, the
+single-host budget authority, and bounded option graphs. Increment 4 implements a
+guarded executor with deterministic offline adapters. There is still no real
 provider integration, routing policy, or Iceberg acquisition policy. See
 `iceberg/ARCHITECTURE.md` before adding product code. Reference directories must
 remain unchanged and must not be imported as runtime packages.

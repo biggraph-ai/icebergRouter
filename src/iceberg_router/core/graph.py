@@ -39,10 +39,20 @@ class _PathBound:
 
 _REQUIRED_OUTCOMES = {
     OperationKind.MODEL_CALL: frozenset(
-        {BranchOutcome.SUCCESS, BranchOutcome.ERROR, BranchOutcome.UNKNOWN}
+        {
+            BranchOutcome.SUCCESS,
+            BranchOutcome.ERROR,
+            BranchOutcome.UNKNOWN,
+            BranchOutcome.UNFUNDED,
+        }
     ),
     OperationKind.DETERMINISTIC_TOOL: frozenset(
-        {BranchOutcome.SUCCESS, BranchOutcome.ERROR, BranchOutcome.INAPPLICABLE}
+        {
+            BranchOutcome.SUCCESS,
+            BranchOutcome.ERROR,
+            BranchOutcome.INAPPLICABLE,
+            BranchOutcome.UNFUNDED,
+        }
     ),
     OperationKind.VERIFY: frozenset(
         {
@@ -50,6 +60,7 @@ _REQUIRED_OUTCOMES = {
             BranchOutcome.FAIL,
             BranchOutcome.UNKNOWN,
             BranchOutcome.ERROR,
+            BranchOutcome.UNFUNDED,
         }
     ),
     OperationKind.RETRIEVAL: frozenset(
@@ -58,6 +69,7 @@ _REQUIRED_OUTCOMES = {
             BranchOutcome.EMPTY,
             BranchOutcome.UNKNOWN,
             BranchOutcome.ERROR,
+            BranchOutcome.UNFUNDED,
         }
     ),
 }

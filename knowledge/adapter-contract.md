@@ -3,9 +3,10 @@
 This document defines Iceberg-owned semantic requirements, not an upstream API.
 Increment 1 implements the portable scalar, decision, execution/usage-event, and
 feedback records under `src/iceberg_router/contracts`; Increment 2 implements the
-single-host ledger/governor; and Increment 3 implements bounded option definitions
-and static graph validation. Executor and general outcome-storage behavior remain
-specifications for later increments.
+single-host ledger/governor; Increment 3 implements bounded option definitions and
+static graph validation; and Increment 4 implements guarded execution against
+injected adapters. Real provider adapters and general outcome-storage behavior
+remain specifications for later increments.
 
 ## Portable scalar rules
 

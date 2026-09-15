@@ -1,5 +1,14 @@
 """Governed runtime internals."""
 
+from .executor import (
+    AttemptExecution,
+    ExecutionRequest,
+    ExecutionResult,
+    ExecutorConfigurationError,
+    OperationContext,
+    OperationResult,
+    OptionExecutor,
+)
 from .governor import AdmissionRequest, AuthorizedAttempt, BoundUnavailable, BudgetGovernor
 from .graph import GraphValidationError, ValidatedOption, validate_option
 from .ledger import (
@@ -20,6 +29,7 @@ from .ledger import (
 __all__ = (
     "AdmissionDenied",
     "AdmissionRequest",
+    "AttemptExecution",
     "AuthorizationRecord",
     "AuthorizedAttempt",
     "BoundUnavailable",
@@ -28,9 +38,15 @@ __all__ = (
     "BudgetNotFound",
     "BudgetSnapshot",
     "DuplicateConflict",
+    "ExecutionRequest",
+    "ExecutionResult",
+    "ExecutorConfigurationError",
     "InvalidTransition",
     "GraphValidationError",
     "LedgerError",
+    "OperationContext",
+    "OperationResult",
+    "OptionExecutor",
     "ReservationRecord",
     "ReservationState",
     "SQLiteBudgetLedger",

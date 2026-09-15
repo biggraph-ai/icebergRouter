@@ -33,6 +33,7 @@ EXPECTED_MODULES = {
     "iceberg_router.policies.task_rule",
     "iceberg_router.adapters",
     "iceberg_router.testing",
+    "iceberg_router.testing.fakes",
 }
 
 ALLOWED_ICEBERG_IMPORTS = {

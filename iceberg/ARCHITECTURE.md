@@ -10,9 +10,10 @@ provenance, license, isolated environment, and behavior have been reviewed.
 
 Increment 0 established the module boundaries, Increment 1 implemented portable
 contracts, Increment 2 implemented the single-host SQLite ledger and admission
-governor, and Increment 3 implements bounded conditional option definitions and
-static validation. Graph execution, provider transport, and selection remain
-deferred to their separately reviewed increments.
+governor, Increment 3 implemented bounded conditional option definitions and
+static validation, and Increment 4 implements guarded graph execution against
+injected adapters. Real provider transport and selection remain deferred to their
+separately reviewed increments.
 
 ## Dependency direction
 
@@ -54,19 +55,18 @@ transport independently testable.
 | `core.ledger` | Durable reservation and settlement state | Increment 2 — implemented |
 | `core.governor` | Upper-liability admission and authorization | Increment 2 — implemented |
 | `core.graph` | Validation of bounded conditional graphs | Increment 3 — implemented |
-| `core.executor` | Authorized graph execution and attempt tracing | Increment 4 |
+| `core.executor` | Authorized graph execution and attempt tracing | Increment 4 — implemented |
 | `core.journal` | Append-only audit records | Increment 5 |
 | `policies.fixed` | Fixed-option selection control | Increment 6 |
 | `policies.task_rule` | Deterministic task-rule control | Increment 6 |
 | `policies.random_mixture` | Seeded logged-propensity control | Increment 6 |
 | `adapters` | Reviewed upstream/provider translations | Increment 7 or later |
-| `testing` | Fake providers, checkers, and common fixtures | Increment 2 onward — ledger fixtures started |
+| `testing` | Fake providers, checkers, and common fixtures | Increment 2 onward — scripted adapters implemented |
 
 ## Non-goals
 
-The governor enforces the local exact-money invariant for liabilities presented to
-it, and the graph validator calculates a structural worst-path liability, but no
-external provider bound has yet been validated. The runtime performs no model
-calls, embedding, retrieval, verification, deserialization, dataset access, or
-benchmark evaluation. It contains no WISERouter or Iceberg acquisition algorithm.
-Those claims require their later acceptance gates.
+The executor enforces local attempt and accounting rules against injected adapters,
+but no external provider bound, cancellation, or timeout behavior has been
+validated. It performs no real model call, embedding, retrieval, deserialization,
+dataset access, or benchmark evaluation. It contains no WISERouter or Iceberg
+acquisition algorithm. Those claims require their later acceptance gates.

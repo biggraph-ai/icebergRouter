@@ -11,6 +11,12 @@ option path, multiplying each operation's per-attempt liability by its maximum
 attempts. That calculation is an admission input, not evidence that a provider
 honors the declared per-attempt bounds.
 
+Increment 4 requests a separate reservation and authorization for every physical
+attempt, including retries. Known usage settles the corresponding hold; exceptions
+or unknown usage retain it as pending; an unfunded later branch defers explicitly;
+and a reported bound breach halts execution and further admission. Adapter timeout
+and cancellation enforcement remain provider-specific, unverified behavior.
+
 ## Quantities
 
 - `budget`: exact fixed-unit shared ceiling.

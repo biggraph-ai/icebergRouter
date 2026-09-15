@@ -34,6 +34,7 @@ class BranchOutcome(str, Enum):
     PASS = "pass"
     FAIL = "fail"
     EMPTY = "empty"
+    UNFUNDED = "unfunded"
 
 
 class TerminalStatus(str, Enum):

@@ -40,8 +40,8 @@ implementation approval as stated.
     author-code reproduction.
 11. **Policy-development gate not met:** no upstream source has been installed or
     run, and no dataset split/artifact lock or baseline parity result exists. Local
-    contract, budget-governor, and bounded-graph fixtures now exist through
-    Increment 3, but
+    contract, budget-governor, bounded-graph, and scripted-executor fixtures now
+    exist through Increment 4, but
     upstream reproduction and Iceberg-specific acquisition policy implementation
     remain prohibited until their applicable gates pass.
 

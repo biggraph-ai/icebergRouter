@@ -51,6 +51,7 @@ def model_node(
     success: str,
     error: str,
     unknown: str,
+    unfunded: str = "defer",
     liability: int,
     max_attempts: int = 1,
 ) -> OperationNode:
@@ -61,7 +62,9 @@ def model_node(
         liability_bound=Nanodollars(liability),
         limits=limits(max_attempts),
         operation_version="model-profile-v1",
-        branches=branches(success=success, error=error, unknown=unknown),
+        branches=branches(
+            success=success, error=error, unknown=unknown, unfunded=unfunded
+        ),
     )
 
 
@@ -97,6 +100,7 @@ def valid_option() -> OptionDefinition:
             Branch(BranchOutcome.FAIL, NodeId("repair")),
             Branch(BranchOutcome.UNKNOWN, NodeId("defer")),
             Branch(BranchOutcome.ERROR, NodeId("defer")),
+            Branch(BranchOutcome.UNFUNDED, NodeId("defer")),
         ),
     )
     repair = model_node(
@@ -221,6 +225,7 @@ class GraphValidationTests(unittest.TestCase):
             success="complete",
             error="complete",
             unknown="complete",
+            unfunded="complete",
             liability=MAX_NANODOLLARS,
             max_attempts=2,
         )

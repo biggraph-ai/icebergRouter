@@ -1,3 +1,5 @@
-"""Iceberg-owned deterministic test support (reserved for later increments)."""
+"""Iceberg-owned deterministic test support."""
 
-__all__: tuple[str, ...] = ()
+from .fakes import DeterministicIdentityFactory, FixedClock, ScriptedAdapter
+
+__all__ = ("DeterministicIdentityFactory", "FixedClock", "ScriptedAdapter")
