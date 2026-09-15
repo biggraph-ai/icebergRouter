@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-09-15",
+  "default_group": "core",
+  "scope": "Source-reading curriculum. These repositories have not been installed or benchmarked here. Paths are starting targets; confirm at the downloaded commit.",
+  "repositories": [
+    {
+      "id": "llmrouterbench",
+      "groups": [
+        "core"
+      ],
+      "url": "https://github.com/ynulihao/LLMRouterBench.git",
+      "purpose": "Offline dataset and evaluation reference; not synthetic evidence for unexecuted conditional paths.",
+      "read_first": [
+        "README.md",
+        "baselines/",
+        "evaluation/",
+        "config/"
+      ],
+      "study_roots": [
+        "baselines",
+        "evaluation",
+        "config",
+        "common",
+        "tools",
+        "data_collector"
+      ],
+      "license_status": "Not confirmed in this review. Inspect pinned code and separate dataset terms before copying or redistribution.",
+      "evidence": [
+        "https://github.com/ynulihao/LLMRouterBench"
+      ]
+    },
+    {
+      "id": "routellm",
+      "groups": [
+        "core"
+      ],
+      "url": "https://github.com/lm-sys/RouteLLM.git",
+      "purpose": "Reference model-selection baseline and threshold calibration.",
+      "read_first": [
+        "README.md",
+        "routellm/controller.py",
+        "routellm/routers/",
+        "routellm/calibrate_threshold.py",
+        "routellm/evals/",
+        "routellm/tests/"
+      ],
+      "study_roots": [
+        "routellm",
+        "examples",
+        "benchmarks"
+      ],
+      "license_status": "Repository page identifies Apache-2.0; inspect pinned notices and artifact licenses.",
+      "evidence": [
+        "https://github.com/lm-sys/RouteLLM",
+        "https://github.com/lm-sys/RouteLLM/tree/main/routellm"
+      ]
+    },
+    {
+      "id": "cascade-routing",
+      "groups": [
+        "core"
+      ],
+      "url": "https://github.com/eth-sri/cascade-routing.git",
+      "purpose": "Sequential decision baseline: stop, call another model, select a final answer.",
+      "read_first": [
+        "README.md",
+        "src/selection/cascade_router.py",
+        "src/selection/baseline_cascader.py",
+        "src/selection/quality_computer.py",
+        "src/selection/cost_computer.py",
+        "src/selection/lambda_strategy.py"
+      ],
+      "study_roots": [
+        "src/selection",
+        "scripts"
+      ],
+      "license_status": "Repository page identifies Apache-2.0; inspect pinned notices.",
+      "evidence": [
+        "https://github.com/eth-sri/cascade-routing",
+        "https://github.com/eth-sri/cascade-routing/tree/main/src/selection"
+      ]
+    },
+    {
+      "id": "r2-router",
+      "groups": [
+        "core"
+      ],
+      "url": "https://github.com/UCF-ML-Research/R2-Router.git",
+      "purpose": "Joint model and output-budget selection; a required comparison for cost reduction claims.",
+      "read_first": [
+        "README.md",
+        "r2_router/router.py",
+        "r2_router/config.json",
+        "route.py",
+        "reproduce/",
+        "DATA_RELEASE.md"
+      ],
+      "study_roots": [
+        "r2_router",
+        "route.py",
+        "reproduce",
+        "experiments",
+        "scripts",
+        "ood_evaluation"
+      ],
+      "license_status": "Not confirmed in this review. Inspect pinned code, checkpoint and dataset terms separately.",
+      "warnings": [
+        "The reviewed README installation example names jqxue1999/router and a different branch. Do not follow that substitution automatically. Reconcile provenance and pinned files first.",
+        "Checkpoint binaries and datasets are excluded by the study downloader. Installation, checkpoint loading and inference require a separate reviewed build plan."
+      ],
+      "evidence": [
+        "https://github.com/UCF-ML-Research/R2-Router",
+        "https://github.com/UCF-ML-Research/R2-Router/tree/main/r2_router"
+      ]
+    },
+    {
+      "id": "llmrouter",
+      "groups": [
+        "core"
+      ],
+      "url": "https://github.com/ulab-uiuc/LLMRouter.git",
+      "purpose": "Common router interfaces, configurable baselines and experiment adapters; do not run its entire algorithm zoo.",
+      "read_first": [
+        "README.md",
+        "CUSTOM_ROUTER_SUMMARY.md",
+        "llmrouter/",
+        "custom_routers/",
+        "configs/",
+        "tests/"
+      ],
+      "study_roots": [
+        "llmrouter",
+        "custom_routers",
+        "configs",
+        "tests",
+        "CUSTOM_ROUTER_SUMMARY.md",
+        "benchmark_pipeline"
+      ],
+      "license_status": "Repository page identifies MIT; inspect pinned notices and bundled third-party material.",
+      "evidence": [
+        "https://github.com/ulab-uiuc/LLMRouter"
+      ]
+    },
+    {
+      "id": "litellm",
+      "groups": [
+        "core"
+      ],
+      "url": "https://github.com/BerriAI/litellm.git",
+      "purpose": "Replaceable provider gateway; inspect billing, retries, streaming and failure semantics rather than adopting its guarantees untested.",
+      "read_first": [
+        "README.md",
+        "ARCHITECTURE.md",
+        "litellm/",
+        "gateway/",
+        "tests/",
+        "LICENSE"
+      ],
+      "study_roots": [
+        "litellm",
+        "gateway",
+        "tests",
+        "ARCHITECTURE.md"
+      ],
+      "license_status": "Mixed licensing boundaries; inspect LICENSE and commercial/enterprise areas. No copying approval is implied.",
+      "evidence": [
+        "https://github.com/BerriAI/litellm",
+        "https://docs.litellm.ai/docs/proxy/users"
+      ]
+    },
+    {
+      "id": "litellm-docs",
+      "groups": [
+        "docs"
+      ],
+      "url": "https://github.com/BerriAI/litellm-docs.git",
+      "purpose": "Optional offline documentation mirror. Discover current budget/retry/streaming pages at the pinned commit.",
+      "read_first": [
+        "README.md",
+        "docs/proxy/"
+      ],
+      "study_roots": [
+        "docs/proxy",
+        "docs/routing",
+        "docs"
+      ],
+      "license_status": "Not reviewed; retain notices.",
+      "evidence": [
+        "https://github.com/BerriAI/litellm"
+      ]
+    },
+    {
+      "id": "semantic-router",
+      "groups": [
+        "architecture"
+      ],
+      "url": "https://github.com/vllm-project/semantic-router.git",
+      "purpose": "Later production integration: separate semantic selection from serving infrastructure.",
+      "read_first": [
+        "README.md",
+        "config/",
+        "src/",
+        "e2e/"
+      ],
+      "study_roots": [
+        "config",
+        "src",
+        "e2e",
+        "website/docs"
+      ],
+      "license_status": "Repository includes LICENSE; inspect pinned text.",
+      "evidence": [
+        "https://github.com/vllm-project/semantic-router"
+      ]
+    },
+    {
+      "id": "graphplanner",
+      "groups": [
+        "architecture"
+      ],
+      "url": "https://github.com/ulab-uiuc/GraphPlanner.git",
+      "purpose": "Later graph-memory workflow baseline; not the initial Iceberg runtime.",
+      "read_first": [
+        "README.md",
+        "router_planner/",
+        "config/"
+      ],
+      "study_roots": [
+        "router_planner",
+        "config"
+      ],
+      "license_status": "Not confirmed in this review. Do not infer permission from public GitHub visibility.",
+      "evidence": [
+        "https://github.com/ulab-uiuc/GraphPlanner"
+      ]
+    },
+    {
+      "id": "langchain4j",
+      "groups": [
+        "java"
+      ],
+      "url": "https://github.com/langchain4j/langchain4j.git",
+      "purpose": "Optional Java model/tool adapter reference after the Python contracts stabilize.",
+      "read_first": [
+        "README.md",
+        "langchain4j-core/",
+        "langchain4j-open-ai/",
+        "http-clients/"
+      ],
+      "study_roots": [
+        "langchain4j-core",
+        "langchain4j-open-ai",
+        "http-clients"
+      ],
+      "license_status": "Inspect pinned repository and module notices.",
+      "evidence": [
+        "https://github.com/langchain4j/langchain4j"
+      ]
+    },
+    {
+      "id": "ai-sdk",
+      "groups": [
+        "typescript"
+      ],
+      "url": "https://github.com/vercel/ai.git",
+      "purpose": "Optional TypeScript provider and streaming adapter reference.",
+      "read_first": [
+        "README.md",
+        "packages/",
+        "architecture/"
+      ],
+      "study_roots": [
+        "packages",
+        "architecture"
+      ],
+      "license_status": "Inspect pinned repository and package notices.",
+      "evidence": [
+        "https://github.com/vercel/ai"
+      ]
+    },
+    {
+      "id": "spring-ai",
+      "groups": [
+        "alternative-java"
+      ],
+      "url": "https://github.com/spring-projects/spring-ai.git",
+      "purpose": "Alternative to LangChain4j when the intended Java integration is Spring-native. Do not require both.",
+      "read_first": [
+        "README.md"
+      ],
+      "study_roots": [
+        "models",
+        "spring-ai-model",
+        "spring-ai-client-chat",
+        "spring-ai-core",
+        "spring-ai-openai"
+      ],
+      "license_status": "Inspect pinned notices; module names may vary by release.",
+      "evidence": [
+        "https://github.com/spring-projects/spring-ai"
+      ]
+    },
+    {
+      "id": "portkey-gateway",
+      "groups": [
+        "alternative-gateway"
+      ],
+      "url": "https://github.com/Portkey-AI/gateway.git",
+      "purpose": "Alternative gateway to LiteLLM, not an additional required runtime.",
+      "read_first": [
+        "README.md",
+        "src/"
+      ],
+      "study_roots": [
+        "src"
+      ],
+      "license_status": "Inspect pinned notices.",
+      "evidence": [
+        "https://github.com/Portkey-AI/gateway"
+      ]
+    }
+  ],
+  "paper_only": [
+    {
+      "id": "wiserouter",
+      "url": "https://arxiv.org/html/2607.23765v1",
+      "read": "Sections 3-4; Algorithms 1-2; assumptions and experimental appendices.",
+      "code_status": "No author-linked code repository was verified in this search. This is not a claim that none exists."
+    },
+    {
+      "id": "pilot",
+      "url": "https://arxiv.org/abs/2508.21141",
+      "read": "Shared representations, partial feedback and budget-policy assumptions."
+    },
+    {
+      "id": "rlcascaderouter",
+      "url": "https://arxiv.org/abs/2608.15817",
+      "read": "Later literature check before claiming novel stop/model-selection learning; no repo required here."
+    }
+  ]
+}
