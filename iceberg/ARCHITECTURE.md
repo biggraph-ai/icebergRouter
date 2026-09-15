@@ -9,9 +9,10 @@ imported by the product package. An upstream adapter may be added only after its
 provenance, license, isolated environment, and behavior have been reviewed.
 
 Increment 0 established the module boundaries, Increment 1 implemented portable
-contracts, and Increment 2 implements the single-host SQLite ledger and admission
-governor. Graph execution, provider transport, and selection remain deferred to
-their separately reviewed increments.
+contracts, Increment 2 implemented the single-host SQLite ledger and admission
+governor, and Increment 3 implements bounded conditional option definitions and
+static validation. Graph execution, provider transport, and selection remain
+deferred to their separately reviewed increments.
 
 ## Dependency direction
 
@@ -47,12 +48,12 @@ transport independently testable.
 | `contracts.money` | Exact fixed-unit money and portable decimal strings | Increment 1 — implemented |
 | `contracts.identifiers` | Immutable request/decision/attempt identities | Increment 1 — implemented |
 | `contracts.decisions` | Eligibility, selection probability, and versions | Increment 1 — implemented |
-| `contracts.options` | Bounded conditional option definitions | Increment 3 |
+| `contracts.options` | Bounded conditional option definitions | Increment 3 — implemented |
 | `contracts.events` | Execution and usage events with attempt identities | Increment 1 — implemented |
 | `contracts.feedback` | Separate preference, objective, and checker observations | Increment 1 — implemented |
 | `core.ledger` | Durable reservation and settlement state | Increment 2 — implemented |
 | `core.governor` | Upper-liability admission and authorization | Increment 2 — implemented |
-| `core.graph` | Validation of bounded conditional graphs | Increment 3 |
+| `core.graph` | Validation of bounded conditional graphs | Increment 3 — implemented |
 | `core.executor` | Authorized graph execution and attempt tracing | Increment 4 |
 | `core.journal` | Append-only audit records | Increment 5 |
 | `policies.fixed` | Fixed-option selection control | Increment 6 |
@@ -64,7 +65,8 @@ transport independently testable.
 ## Non-goals
 
 The governor enforces the local exact-money invariant for liabilities presented to
-it, but no external provider bound has yet been validated. The runtime performs no
-model calls, embedding, retrieval, verification, deserialization, dataset access,
-or benchmark evaluation. It contains no WISERouter or Iceberg acquisition
-algorithm. Those claims require their later acceptance gates.
+it, and the graph validator calculates a structural worst-path liability, but no
+external provider bound has yet been validated. The runtime performs no model
+calls, embedding, retrieval, verification, deserialization, dataset access, or
+benchmark evaluation. It contains no WISERouter or Iceberg acquisition algorithm.
+Those claims require their later acceptance gates.

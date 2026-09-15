@@ -1,6 +1,7 @@
 """Governed runtime internals."""
 
 from .governor import AdmissionRequest, AuthorizedAttempt, BoundUnavailable, BudgetGovernor
+from .graph import GraphValidationError, ValidatedOption, validate_option
 from .ledger import (
     AdmissionDenied,
     AuthorizationRecord,
@@ -28,9 +29,12 @@ __all__ = (
     "BudgetSnapshot",
     "DuplicateConflict",
     "InvalidTransition",
+    "GraphValidationError",
     "LedgerError",
     "ReservationRecord",
     "ReservationState",
     "SQLiteBudgetLedger",
     "SettlementResult",
+    "ValidatedOption",
+    "validate_option",
 )

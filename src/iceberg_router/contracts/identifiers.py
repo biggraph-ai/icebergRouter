@@ -50,6 +50,14 @@ class OptionId(Identifier):
     pass
 
 
+class OptionVersion(Identifier):
+    pass
+
+
+class NodeId(Identifier):
+    pass
+
+
 class PolicyVersion(Identifier):
     pass
 
@@ -87,4 +95,16 @@ class AccountId(Identifier):
 
 
 class EvaluatorVersion(Identifier):
+    pass
+
+
+class EstimatorVersion(Identifier):
+    pass
+
+
+class BoundVersion(Identifier):
+    pass
+
+
+class ApplicabilityVersion(Identifier):
     pass

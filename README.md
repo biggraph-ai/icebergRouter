@@ -43,12 +43,12 @@ The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited
 ## Product implementation workspace
 
 Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
-`iceberg/`. Increment 0 established package boundaries, Increment 1 implemented
-portable contracts, and Increment 2 implements the single-host SQLite ledger and
-upper-liability governor. There is still no option executor, provider integration,
-routing policy, or Iceberg acquisition policy. See `iceberg/ARCHITECTURE.md` before
-adding product code. Reference directories must remain unchanged and must not be
-imported as runtime packages.
+`iceberg/`. Increments 0–2 established boundaries, portable contracts, and the
+single-host budget authority. Increment 3 implements bounded conditional-option
+definitions and static graph validation. There is still no option executor,
+provider integration, routing policy, or Iceberg acquisition policy. See
+`iceberg/ARCHITECTURE.md` before adding product code. Reference directories must
+remain unchanged and must not be imported as runtime packages.
 
 ## Validation
 Run `python -m unittest discover -s tests -v` for the downloader's local tests. See `TEST_STATUS.md` for what was actually tested. No upstream build or paper-result reproduction is claimed.

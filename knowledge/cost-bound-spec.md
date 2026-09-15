@@ -6,6 +6,11 @@ only to liabilities submitted to this authority under valid upper bounds. Provid
 bound validation, complete billable-action interception, and the append-only audit
 journal remain later executor, adapter, and journaling work.
 
+Increment 3 also computes a checked structural maximum over every legal acyclic
+option path, multiplying each operation's per-attempt liability by its maximum
+attempts. That calculation is an admission input, not evidence that a provider
+honors the declared per-attempt bounds.
+
 ## Quantities
 
 - `budget`: exact fixed-unit shared ceiling.
