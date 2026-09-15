@@ -38,9 +38,11 @@ implementation approval as stated.
     but exact equation transcription, solver/tie/zero-mass numerical behavior,
     hyperparameters, and author-linked code remain unresolved. Do not claim an
     author-code reproduction.
-11. **Acceptance gate not met:** no upstream source has been installed or run; no
-    dataset split/artifact lock, baseline parity result, common synthetic fixture,
-    or approved isolated environment exists. Implementation remains prohibited.
+11. **Policy-development gate not met:** no upstream source has been installed or
+    run; no dataset split/artifact lock, baseline parity result, or common synthetic
+    behavior fixture exists. The user authorized the dependency-free Increment 0
+    product scaffold, but upstream reproduction and Iceberg-specific acquisition
+    policy implementation remain prohibited until their applicable gates pass.
 
 ## Explicitly not blocked / corrected stale status
 
