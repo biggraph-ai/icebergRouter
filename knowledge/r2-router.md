@@ -1,46 +1,39 @@
 # Repository study note: r2-router
 
 Repository URL: https://github.com/UCF-ML-Research/R2-Router.git
-Pinned SHA: NOT AVAILABLE (fetch blocked before `FETCH_HEAD`)
-Reviewed files/symbols/line ranges: NONE—source was not retrieved
-Paper or upstream documentation: workspace manifest/register only; upstream README NOT INSPECTED
-Code / dataset / checkpoint license status: NOT REVIEWED
+Pinned SHA: 02d02f10ab10c930604b82a506b76af337b2982c (enclosing snapshot; upstream SHA unknown)
+Reviewed files/symbols/line ranges: `r2_router/router.py:R2Router.from_pretrained` (80–139), `route` (248–325), `generate` (329–402), `route_and_generate` (404–440); `README.md`; `DATA_RELEASE.md`; `artifacts/LICENSE_NOTE.md`
+Paper or upstream documentation: root README inspected; claims below use code unless labeled documented
+Code / dataset / checkpoint license status: see reuse/open questions
 
 ## Observed responsibility
 
-No code behavior was observed. The workspace describes joint model/output-budget
-selection and separately reports that an earlier README review found a clone
-example naming `jqxue1999/router` and another branch. That discrepancy remains
-unresolved and must not be silently normalized.
+Joint model/output-effort selector using Ridge predictions. It enumerates finite and “unlimited” options and maximizes a quality/cost scalarization.
 
 ## Call-chain trace
 
-UNVERIFIED: request/features → candidate `(model, output budget)` scores/costs →
-pair selection → bounded generation → result. Inspect `r2_router/router.py`, its
-configuration, `route.py`, reproduction files, and `DATA_RELEASE.md`.
+query → local/remote embedding → approximate input tokens → Ridge quality/token predictions → float predicted cost/risk → best pair → HTTP generation → usage. Finite “budget” is inserted only into a system prompt; no output-token request cap is sent.
+
+## Inputs, outputs and state
+
+See `source-map.md` for the precise schemas and symbol evidence. Mutable model/config/cache state remains upstream-specific; Iceberg adapters must snapshot versions rather than expose live objects.
 
 ## Budget and feedback assumptions
 
-UNKNOWN. Predicted output tokens, requested `max_tokens`, provider-enforced limits,
-and invoice liability are distinct until code/provider evidence proves otherwise.
+Cost is an estimate from configured token prices; it is not liability admission. Missing usage keys become zero. Joblib loading can execute unsafe serialized content and optional paths download from Hugging Face.
 
 ## Reuse decision
 
-Isolated baseline adapter only. Do not load checkpoints until format, provenance,
-license, and deserialization risk are reviewed.
+Reference selector only pending license/provenance. A safe adapter must use supplied arrays/stubs and a separately bounded executor. No root code license found; artifact note does not resolve upstream rights.
 
 ## Minimal test proposal
 
-Pass a tiny synthetic quality/cost grid to the smallest inspected selection
-function and hand-check the selected model-budget pair, ties, and infeasible pairs.
-No checkpoint, model, data download, secret, network, or paid call.
+Without loading checkpoints, construct stub predictors/config in an isolated test and call `route` on one fixed embedding; cover ties, finite/unlimited, and infeasible-under-common-guard cases. No network/secret; $0.
 
 ## Executed evidence
 
-Core source-only fetch FAILED with HTTPS CONNECT 403 on 2026-09-15. No upstream
-code ran.
+NOT RUN. On 2026-09-15 this pass only read source in the supplied Linux workspace. No dependencies were installed; no upstream script, model, dataset, checkpoint, service, network request, or paid call was executed.
 
 ## Open questions
 
-Canonical provenance discrepancy, exact SHA/symbols, license and artifact terms,
-checkpoint type, token-limit enforcement, retries, cost model, and feedback labels.
+README canonical-repository discrepancy; upstream SHA; code/checkpoint licenses/hashes; joblib provenance; prompt-only cap; float rounding and missing usage semantics.

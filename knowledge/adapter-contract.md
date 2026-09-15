@@ -1,7 +1,9 @@
-# Proposed common contracts (pre-implementation)
+# Common contract specification
 
-This document defines semantic requirements, not an invented upstream API. Names
-are proposed Iceberg-owned boundaries and may change after the source audit.
+This document defines Iceberg-owned semantic requirements, not an upstream API.
+Increment 1 implements the portable scalar, decision, execution/usage-event, and
+feedback records under `src/iceberg_router/contracts`. Ledger, governor, option
+graph, executor, and storage behavior remain specifications for later increments.
 
 ## Portable scalar rules
 

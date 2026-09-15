@@ -1,4 +1,10 @@
-# Cost-bound specification (proposal)
+# Cost-bound specification
+
+Increment 2 implements the single-host SQLite reservation, authorization, pending,
+and settlement lifecycle in `src/iceberg_router/core`. The local invariant applies
+only to liabilities submitted to this authority under valid upper bounds. Provider
+bound validation, complete billable-action interception, and the append-only audit
+journal remain later executor, adapter, and journaling work.
 
 ## Quantities
 
@@ -49,5 +55,7 @@ cap is insufficient when other charge components are unbounded or undocumented.
 
 Authorization and balance update require a transactional compare-and-write or an
 equivalent serializable single-writer protocol. Atomic file replacement alone does
-not prevent two readers from reserving the same funds. Crash recovery must rebuild
-confirmed and outstanding amounts from durable append-only events.
+not prevent two readers from reserving the same funds. Increment 2 persists current
+accounting records transactionally and reconstructs balances after restart. The
+separate immutable audit journal and replay-from-events gate remain Increment 5
+work and must be completed before claiming that stronger recovery property.
