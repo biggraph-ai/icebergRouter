@@ -13,9 +13,10 @@ contracts, Increment 2 implemented the single-host SQLite ledger and admission
 governor, Increment 3 implemented bounded conditional option definitions and
 static validation, Increment 4 implements guarded graph execution against injected
 adapters, Increment 5 implements a durable append-only audit journal, and Increment
-6 implements three offline control policies, and Increment 7 implements the
-provider-independent single-attempt adapter boundary. Real provider transports and
-the Iceberg acquisition policy remain deferred to separately reviewed increments.
+6 implements three offline control policies, Increment 7 implements the
+provider-independent single-attempt adapter boundary, and Increment 8 implements
+selection-to-execution orchestration. Real provider transports and the Iceberg
+acquisition policy remain deferred to separately reviewed increments.
 
 ## Dependency direction
 
@@ -59,6 +60,7 @@ transport independently testable.
 | `core.graph` | Validation of bounded conditional graphs | Increment 3 — implemented |
 | `core.executor` | Authorized graph execution and attempt tracing | Increment 4 — implemented |
 | `core.journal` | Append-only hash-chained audit records | Increment 5 — implemented |
+| `core.router` | Policy/audit/executor orchestration | Increment 8 — implemented |
 | `policies.fixed` | Fixed-option selection control | Increment 6 — implemented |
 | `policies.task_rule` | Deterministic task-rule control | Increment 6 — implemented |
 | `policies.random_mixture` | Seeded logged-propensity control | Increment 6 — implemented |
@@ -93,3 +95,11 @@ operation kind and version and calls an injected transport once without adding
 retries, fallbacks, pricing inference, or zero-usage defaults. It cannot detect retries
 hidden inside the injected SDK or gateway; each real transport still requires
 provider-specific review and an enforceable liability analysis.
+
+Increment 8 accepts a policy through the contract protocol, requires executable
+options to exactly match the immutable candidate snapshot, checks each eligible
+candidate's declared upper liability against the validated graph bound, persists
+the decision before execution, and records the realized trace afterward. It does
+not make policy, journal, ledger, and provider work one atomic transaction. A
+duplicate decision fails closed before another execution; crash recovery across
+these boundaries remains deferred.

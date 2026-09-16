@@ -3,7 +3,7 @@
 This directory is the Iceberg-owned implementation workspace. The top-level
 reference repositories remain evidence and are not runtime dependencies.
 
-## Current status: Increment 7
+## Current status: Increment 8
 
 Increment 0 established package ownership and dependency boundaries. Increment 1
 implemented portable contracts. Increment 2 added the SQLite liability ledger and
@@ -23,6 +23,9 @@ Increment 7 adds a provider-independent operation contract and a single-attempt
 adapter wrapper for injected transports. It intentionally ships no provider SDK or
 real provider transport and cannot certify that an injected SDK has no hidden
 retries.
+Increment 8 adds an `IcebergRouter` coordinator that validates a common candidate
+snapshot, obtains and audits a pure policy decision, executes only its selected
+validated option through the guarded executor, and audits the realized trace.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
@@ -37,7 +40,7 @@ Detailed import rules and deferred work are recorded in
 
 ## Local validation
 
-No installation is necessary for the Increment 0 through Increment 7 checks:
+No installation is necessary for the Increment 0 through Increment 8 checks:
 
 ```sh
 python -m unittest discover -s tests -v
@@ -55,5 +58,9 @@ deterministic selection and deferral, immutable policy configuration, seed repla
 exact mixture propensities, and invalid snapshots. Increment 7 tests cover
 authorized attempt identity, known-versus-unknown usage,
 operation-kind isolation, exactly one wrapper-level transport invocation, strict
-result typing, and exception propagation without adapter-level retry. Passing these
-tests does not validate an external provider or an adaptive routing policy.
+result typing, and exception propagation without adapter-level retry. Increment 8
+tests cover complete offline selection-to-settlement orchestration,
+audited deferral, candidate/option parity, graph-bound reconciliation, immutable
+option snapshots, policy contract enforcement, and duplicate-decision fail-closed
+behavior. Passing these tests does not validate an external provider or an adaptive
+routing policy. These are deterministic fixtures, not routing-quality evidence.

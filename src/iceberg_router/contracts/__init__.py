@@ -45,6 +45,7 @@ from .options import (
     TerminalNode,
     TerminalStatus,
 )
+from .routing import PolicyRequest, RoutingPolicy
 
 __all__ = (
     "AccountId",
@@ -82,8 +83,10 @@ __all__ = (
     "OperationResult",
     "OutputId",
     "PolicyVersion",
+    "PolicyRequest",
     "Probability",
     "RequestId",
+    "RoutingPolicy",
     "ReservationId",
     "Score",
     "SnapshotVersion",

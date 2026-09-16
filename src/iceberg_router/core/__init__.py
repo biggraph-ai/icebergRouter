@@ -36,6 +36,13 @@ from .ledger import (
     SQLiteBudgetLedger,
     SettlementResult,
 )
+from .router import (
+    IcebergRouter,
+    PolicyContractError,
+    RouteRequest,
+    RouteResult,
+    RoutingConfigurationError,
+)
 
 __all__ = (
     "AdmissionDenied",
@@ -53,6 +60,7 @@ __all__ = (
     "ExecutionResult",
     "ExecutorConfigurationError",
     "InvalidTransition",
+    "IcebergRouter",
     "GraphValidationError",
     "GENESIS_HASH",
     "LedgerError",
@@ -66,8 +74,12 @@ __all__ = (
     "OperationContext",
     "OperationResult",
     "OptionExecutor",
+    "PolicyContractError",
     "ReservationRecord",
     "ReservationState",
+    "RouteRequest",
+    "RouteResult",
+    "RoutingConfigurationError",
     "SQLiteBudgetLedger",
     "SQLiteAuditJournal",
     "SettlementResult",

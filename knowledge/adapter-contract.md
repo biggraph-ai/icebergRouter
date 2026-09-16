@@ -11,6 +11,12 @@ Increment 6 implements fixed, task-rule, and random-mixture controls; and Increm
 single-invocation wrapper. Real provider transports and the adaptive Iceberg policy
 remain specifications for later increments.
 
+Increment 8 composes the existing contracts without moving authority: a pure policy
+returns a decision, the journal records it, and only the executor may request
+authorization and invoke an adapter. Executable options must match the candidate
+snapshot, and eligible-option liability cannot understate the statically validated
+graph bound.
+
 ## Portable scalar rules
 
 - Identifiers, policy versions, model/provider versions, and timestamps are
