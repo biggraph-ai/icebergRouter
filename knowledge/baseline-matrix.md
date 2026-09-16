@@ -6,7 +6,7 @@
 | Baseline | Choice / outcome unit | Cost and budget assumption | Feedback visibility | Trace status | Reuse |
 |---|---|---|---|---|---|
 | Fixed option | One frozen bounded option | Iceberg expected estimate + common liability guard | Executed outcome only | Real attempt trace | Iceberg-owned control |
-| Task rule / random mixture | One eligible option | Same guard and accounts | Executed outcome only; log propensity | Real attempt trace | Iceberg-owned control |
+| Task rule / random mixture | One configured assignment; ineligible sampled assignments defer | Same guard and accounts | Executed outcome only; exact finite-decimal propensity | Real attempt trace | Iceberg-owned control; Increment 6 selector implemented offline |
 | LLMRouterBench | One independent `(dataset, split, model, index)` output | Float USD recorded per row and summed; no liability bound (**inspected**) | Ground truth/score present in offline record | Not a conditional path | Dataset/evaluator adapter only |
 | RouteLLM | Strong or weak model via `score >= threshold` | Calibration controls strong-call percentage, not dollars; no upper-liability admission (**inspected**) | Arena preference and judge battles in defaults; only chosen call executes | One model call, gateway behavior additional | Pure decision adapter |
 | Cascade Routing | Next model or stop, then select among observed answers | Optimizes average/expected cost with fitted lambda and randomized tie mixture; no pathwise ceiling (**inspected**) | Training/evaluation accepts response tables; `None` means unrun | Sequential policy can be simulated from table; must execute afresh for real traces | Isolated reproduction |

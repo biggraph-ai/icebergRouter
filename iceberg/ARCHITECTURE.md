@@ -12,9 +12,9 @@ Increment 0 established the module boundaries, Increment 1 implemented portable
 contracts, Increment 2 implemented the single-host SQLite ledger and admission
 governor, Increment 3 implemented bounded conditional option definitions and
 static validation, Increment 4 implements guarded graph execution against injected
-adapters, and Increment 5 implements a durable append-only audit journal. Real
-provider transport and selection remain deferred to their separately reviewed
-increments.
+adapters, Increment 5 implements a durable append-only audit journal, and Increment
+6 implements three offline control policies. Real provider transport and the
+Iceberg acquisition policy remain deferred to separately reviewed increments.
 
 ## Dependency direction
 
@@ -58,9 +58,9 @@ transport independently testable.
 | `core.graph` | Validation of bounded conditional graphs | Increment 3 — implemented |
 | `core.executor` | Authorized graph execution and attempt tracing | Increment 4 — implemented |
 | `core.journal` | Append-only hash-chained audit records | Increment 5 — implemented |
-| `policies.fixed` | Fixed-option selection control | Increment 6 |
-| `policies.task_rule` | Deterministic task-rule control | Increment 6 |
-| `policies.random_mixture` | Seeded logged-propensity control | Increment 6 |
+| `policies.fixed` | Fixed-option selection control | Increment 6 — implemented |
+| `policies.task_rule` | Deterministic task-rule control | Increment 6 — implemented |
+| `policies.random_mixture` | Seeded logged-propensity control | Increment 6 — implemented |
 | `adapters` | Reviewed upstream/provider translations | Increment 7 or later |
 | `testing` | Fake providers, checkers, and common fixtures | Increment 2 onward — scripted adapters implemented |
 
@@ -78,3 +78,9 @@ signature or external transparency log: an actor with database and schema contro
 can rewrite the chain. Journal writes are not transactionally coupled to ledger
 mutations or provider calls, so the ledger remains authoritative and crash-gap
 reconciliation is still required.
+
+Increment 6 policies are pure selectors over a supplied candidate snapshot. They
+cannot import the governor or executor, and therefore cannot authorize spending.
+The random-mixture control samples a configured finite-decimal distribution without
+binary floating point and logs the probability of the realized selection or
+aggregate deferral. It is a control baseline, not an adaptive Iceberg policy.

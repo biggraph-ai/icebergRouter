@@ -3,7 +3,7 @@
 This directory is the Iceberg-owned implementation workspace. The top-level
 reference repositories remain evidence and are not runtime dependencies.
 
-## Current status: Increment 5
+## Current status: Increment 6
 
 Increment 0 established package ownership and dependency boundaries. Increment 1
 implemented portable contracts. Increment 2 added the SQLite liability ledger and
@@ -16,6 +16,9 @@ policy. Increment 5 adds a durable, immutable SQLite audit journal with atomic
 batches, idempotent replay, explicit correction links, and hash-chain verification.
 It does not make ledger and journal writes one distributed transaction, and its
 hash chain provides tamper evidence rather than external authenticity.
+Increment 6 adds pure fixed-option, workload-rule, and seeded random-mixture
+controls. These selectors preserve the supplied eligibility and estimate snapshot,
+log deterministic or exact finite-decimal propensities, and never authorize spend.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
@@ -30,7 +33,7 @@ Detailed import rules and deferred work are recorded in
 
 ## Local validation
 
-No installation is necessary for the Increment 0 through Increment 5 checks:
+No installation is necessary for the Increment 0 through Increment 6 checks:
 
 ```sh
 python -m unittest discover -s tests -v
@@ -38,10 +41,12 @@ python -m unittest discover -s tests -v
 
 The tests add `src/` to their import path. Structural tests verify package layout
 and dependency direction; contract tests cover strict validation, immutable values,
-checked arithmetic, explicit unknown states, and JSON round trips. Passing them
-Increment 2 tests exercise the ledger against temporary local SQLite databases.
+checked arithmetic, explicit unknown states, and JSON round trips. Increment 2
+tests exercise the ledger against temporary local SQLite databases.
 Increment 3 tests validate graph structure and bounds. Increment 4 runs guarded
 conditional traces against deterministic scripted adapters. Increment 5 tests
 exercise concurrent journal writers, restart, idempotency, corrections, immutable
-rows, canonical payloads, and tamper detection. Passing them does not validate an
-external provider or routing policy.
+rows, canonical payloads, and tamper detection. Increment 6 tests cover
+deterministic selection and deferral, immutable policy configuration, seed replay,
+exact mixture propensities, and invalid snapshots. Passing these tests does not
+validate an external provider or an adaptive routing policy.

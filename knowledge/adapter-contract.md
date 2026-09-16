@@ -5,8 +5,9 @@ Increment 1 implements the portable scalar, decision, execution/usage-event, and
 feedback records under `src/iceberg_router/contracts`; Increment 2 implements the
 single-host ledger/governor; Increment 3 implements bounded option definitions and
 static graph validation; Increment 4 implements guarded execution against injected
-adapters; and Increment 5 implements the local append-only outcome journal. Real
-provider adapters remain specifications for later increments.
+adapters; Increment 5 implements the local append-only outcome journal; and
+Increment 6 implements fixed, task-rule, and random-mixture controls. Real provider
+adapters and the adaptive Iceberg policy remain specifications for later increments.
 
 ## Portable scalar rules
 

@@ -1,3 +1,13 @@
-"""Pure selection policies (reserved for Increment 6 and later)."""
+"""Iceberg-owned, pure selection controls."""
 
-__all__: tuple[str, ...] = ()
+from .fixed import FixedPolicy, PolicyConfigurationError, PolicyRequest
+from .random_mixture import RandomMixturePolicy
+from .task_rule import TaskRulePolicy
+
+__all__ = (
+    "FixedPolicy",
+    "PolicyConfigurationError",
+    "PolicyRequest",
+    "RandomMixturePolicy",
+    "TaskRulePolicy",
+)
