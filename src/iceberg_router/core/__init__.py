@@ -10,6 +10,7 @@ from .executor import (
     OptionExecutor,
 )
 from .governor import AdmissionRequest, AuthorizedAttempt, BoundUnavailable, BudgetGovernor
+from .feedback_store import FeedbackSnapshot, FeedbackStoreError, JournalFeedbackStore
 from .graph import GraphValidationError, ValidatedOption, validate_option
 from .journal import (
     GENESIS_HASH,
@@ -63,6 +64,8 @@ __all__ = (
     "IcebergRouter",
     "GraphValidationError",
     "GENESIS_HASH",
+    "FeedbackSnapshot",
+    "FeedbackStoreError",
     "LedgerError",
     "JournalAppendResult",
     "JournalConflict",
@@ -71,6 +74,7 @@ __all__ = (
     "JournalEventType",
     "JournalIntegrityError",
     "JournalRecord",
+    "JournalFeedbackStore",
     "OperationContext",
     "OperationResult",
     "OptionExecutor",

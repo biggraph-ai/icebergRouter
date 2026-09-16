@@ -3,7 +3,7 @@
 This directory is the Iceberg-owned implementation workspace. The top-level
 reference repositories remain evidence and are not runtime dependencies.
 
-## Current status: Increment 9
+## Current status: Increment 10
 
 Increment 0 established package ownership and dependency boundaries. Increment 1
 implemented portable contracts. Increment 2 added the SQLite liability ledger and
@@ -29,6 +29,8 @@ validated option through the guarded executor, and audits the realized trace.
 Increment 9 adds exact offline evaluation accounting for service coverage,
 deferrals, failures, pending outcomes, known cost, unresolved-cost attempts,
 selection counts, and independent feedback channels.
+Increment 10 adds journal-backed feedback ingestion and deterministic visibility
+snapshots with a journal-sequence high-water mark for leakage-safe replay.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
@@ -44,7 +46,7 @@ Detailed import rules and deferred work are recorded in
 
 ## Local validation
 
-No installation is necessary for the Increment 0 through Increment 9 checks:
+No installation is necessary for the Increment 0 through Increment 10 checks:
 
 ```sh
 python -m unittest discover -s tests -v
@@ -71,3 +73,7 @@ routing policy. These are deterministic fixtures, not routing-quality evidence.
 Increment 9 tests verify original-workload denominators, exact fractional rates,
 unknown-cost preservation, independent feedback counts, evidence-kind separation,
 and portable fixed-unit totals. They do not reproduce an upstream benchmark.
+Increment 10 tests cover visibility cutoffs, append idempotency, independent
+feedback channels, request/output filters, restart-stable versions, high-water-mark
+replay, deterministic ordering, and malformed-record rejection. They do not test
+feedback learning or claim adaptation quality.

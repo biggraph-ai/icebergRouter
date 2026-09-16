@@ -90,6 +90,12 @@ objective correctness as pass/fail/unknown, with provenance, timestamp, target
 output, evaluator version, and visibility time. Verifier audits do not synthesize
 unobserved alternative outcomes.
 
+Increment 10 appends these events through the immutable journal and creates
+deterministic snapshots bounded by both visibility time and journal sequence.
+Later/backfilled feedback therefore cannot enter a replayed historical snapshot.
+The store deliberately exposes all matching observations and performs no learning,
+majority vote, evaluator weighting, or correction inference.
+
 ## `OptionDefinition`
 
 Proposed shared value object: stable option/version ID, applicability predicate,

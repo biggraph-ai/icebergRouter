@@ -15,8 +15,9 @@ static validation, Increment 4 implements guarded graph execution against inject
 adapters, Increment 5 implements a durable append-only audit journal, and Increment
 6 implements three offline control policies, Increment 7 implements the
 provider-independent single-attempt adapter boundary, Increment 8 implements
-selection-to-execution orchestration, and Increment 9 implements exact offline
-coverage and observation accounting. Real provider transports and the Iceberg
+selection-to-execution orchestration, Increment 9 implements exact offline coverage
+and observation accounting, and Increment 10 implements visibility-safe feedback
+snapshots. Real provider transports, feedback adaptation, and the Iceberg
 acquisition policy remain deferred to separately reviewed increments.
 
 ## Dependency direction
@@ -64,6 +65,7 @@ transport independently testable.
 | `core.executor` | Authorized graph execution and attempt tracing | Increment 4 — implemented |
 | `core.journal` | Append-only hash-chained audit records | Increment 5 — implemented |
 | `core.router` | Policy/audit/executor orchestration | Increment 8 — implemented |
+| `core.feedback_store` | Append-only visibility-bounded feedback snapshots | Increment 10 — implemented |
 | `policies.fixed` | Fixed-option selection control | Increment 6 — implemented |
 | `policies.task_rule` | Deterministic task-rule control | Increment 6 — implemented |
 | `policies.random_mixture` | Seeded logged-propensity control | Increment 6 — implemented |
@@ -113,3 +115,10 @@ rates as exact integer fractions, totals only known fixed-unit cost, and separat
 counts unresolved-cost attempts. User votes, objective results, and checker results
 remain separate channels. Executed traces and synthetic tables cannot be aggregated
 together. This is accounting infrastructure, not baseline parity or quality evidence.
+
+Increment 10 projects feedback already stored in the immutable journal into
+deterministic as-of snapshots. Both a visibility cutoff and journal-sequence high
+water mark are part of snapshot identity, preventing later or backfilled events from
+silently changing a reproduced snapshot. It does not train, update, or evaluate an
+adaptive policy, and multiple evaluator observations are preserved rather than
+collapsed into invented ground truth.

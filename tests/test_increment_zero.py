@@ -25,6 +25,7 @@ EXPECTED_MODULES = {
     "iceberg_router.contracts.routing",
     "iceberg_router.core",
     "iceberg_router.core.executor",
+    "iceberg_router.core.feedback_store",
     "iceberg_router.core.governor",
     "iceberg_router.core.graph",
     "iceberg_router.core.journal",
