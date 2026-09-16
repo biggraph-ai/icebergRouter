@@ -1,61 +1,52 @@
-# Blocked items
+# Blocked items and discrepancies
 
-## B01 — audited blueprint missing (blocking)
+None of these blocks reconnaissance; they block faithful reproduction, reuse, or
+implementation approval as stated.
 
-`IcebergRouter_Implementation_Blueprint_v2_Audited.docx` was not found under
-`/workspace`. Without it, conflicts between the authoritative design and the
-working synthesis cannot be audited.
+1. **Upstream commit provenance:** the six folders have no nested `.git` data and
+   no vendor lock. Only enclosing commit
+   `02d02f10ab10c930604b82a506b76af337b2982c` is verifiable. Obtain canonical URL,
+   original SHA, archive hash, notice hash, and modification record for each.
+2. **Missing root licenses:** no root license was found for `LLMRouterBench` or
+   `R2-Router`. Embedded baseline licenses do not license the parent repository.
+   R2's artifact note explicitly leaves upstream rights to their providers.
+3. **Artifact/data terms:** RouteLLM Hugging Face datasets/checkpoints, Cascade
+   response data, LLMRouter bundled datasets, LLMRouterBench datasets, and all R2
+   joblib checkpoints need independent provenance, checksum, format, and license
+   review. Presence in Git is not copying/redistribution permission.
+4. **R2 provenance discrepancy:** its README clone command names
+   `jqxue1999/router` branch `r2-router`, while the study manifest names
+   `UCF-ML-Research/R2-Router`. Resolve authorship/history; do not substitute one.
+5. **R2 unsafe budget semantics:** prompt-only length instruction does not enforce
+   an output cap; missing provider usage is coerced to zero. A faithful baseline
+   and a safe adapted executor must be separately named.
+6. **Cascade ambiguity/possible defect:** characterize empty-answer behavior in
+   `select_answer`, tie randomization, `gamma`, response-table visibility, and cost
+   units before claiming parity.
+7. **LLMRouterBench discrepancy:** the baseline schema documents a float USD cost,
+   but no provenance/version for that tariff is carried by `BaselineRecord`; some
+   evaluators can call graders or execute generated code. Select a safe, offline
+   subset rather than treating all evaluation modules as pure.
+8. **Hidden attempts:** LiteLLM defaults can inherit retries and expose several
+   fallback classes; RouteLLM delegates execution to LiteLLM. Exact sync/async,
+   streaming, cancellation, and fallback attempt identities require characterization.
+9. **Unsupported strict budget guarantee:** LiteLLM reservation can skip unknown
+   estimates, use float money, continue when a write is unavailable unless
+   fail-closed, or resize in non-strict mode. No reviewed upstream baseline proves
+   `confirmed + outstanding <= budget` under Iceberg assumptions.
+10. **WISERouter reproduction details:** paper v1 is present and §§3–4 were read,
+    but exact equation transcription, solver/tie/zero-mass numerical behavior,
+    hyperparameters, and author-linked code remain unresolved. Do not claim an
+    author-code reproduction.
+11. **Policy-development gate not met:** no upstream source has been installed or
+    run, and no dataset split/artifact lock or baseline parity result exists. Local
+    contract, budget-governor, bounded-graph, and scripted-executor fixtures now
+    exist through Increment 4, but
+    upstream reproduction and Iceberg-specific acquisition policy implementation
+    remain prohibited until their applicable gates pass.
 
-Resolution: provide the original file; extract/read it without executing embedded
-content; record conflicts rather than silently reconciling them.
+## Explicitly not blocked / corrected stale status
 
-## B02 — all six core source fetches blocked (blocking)
-
-Command: `python fetch_references.py --groups core --clone`
-Environment: provided Linux container, 2026-09-15
-Result: each Git HTTPS fetch failed at the proxy CONNECT step with HTTP 403, before
-`FETCH_HEAD` was resolved. Partial initialized directories remain under ignored
-`references/repos/`; no `vendor-lock.json` repository records were created.
-
-Impact: exact upstream SHAs, code symbols/lines, notices, retries, budget semantics,
-feedback assumptions, and reuse boundaries cannot be reported as inspected.
-
-Resolution: run the reviewed source-only downloader in a network environment that
-permits GitHub HTTPS, or provide unmodified source-only archives plus independently
-verifiable commit identities and notices. Review/remove partial directories before
-retrying because the downloader intentionally refuses unmanaged destinations.
-
-## B03 — WISERouter paper retrieval blocked (blocking)
-
-The configured web tool returned HTTP 401 and direct HTTPS access to arXiv returned
-proxy CONNECT 403. No paper content was received.
-
-Resolution: provide arXiv v1 text/PDF (`2607.23765v1`) or allow read-only arXiv
-access. Verify the document identifier and record page/section evidence.
-
-## B04 — upstream licensing and artifact terms unresolved (blocking for reuse)
-
-LLMRouterBench and R2-Router code licenses are unconfirmed in the workspace;
-LiteLLM has reported mixed boundaries; reported Apache/MIT labels for other repos
-have not been verified at pinned commits. Dataset, checkpoint, and bundled
-third-party terms remain separate unknowns.
-
-## B05 — R2-Router provenance discrepancy unresolved
-
-The workspace register reports that a reviewed README clone example pointed to
-`jqxue1999/router` and a different branch, while the manifest names
-`UCF-ML-Research/R2-Router`. Preserve both facts until pinned source/history or an
-author statement resolves the relationship.
-
-## B06 — hidden retries and unsupported guarantees unknown
-
-No upstream call chain was available. Retry/fallback defaults, usage on streaming
-cancellation, missing usage, concurrent budget state, duplicate settlement, and
-provider enforcement are unverified for every baseline/gateway. No upstream
-mechanism currently has evidence of satisfying Iceberg's strict shared ceiling.
-
-## Non-blocking local evidence
-
-The study downloader's 10 local tests pass. They use temporary local Git fixtures;
-they are not remote-fetch, upstream-build, router-quality, or paper-reproduction
-evidence.
+The audited DOCX, all six source snapshots, and WISERouter PDF are present. Earlier
+notes claiming they were absent or network-blocked described a prior workspace
+state and are superseded by this pass. No download is needed or authorized.
