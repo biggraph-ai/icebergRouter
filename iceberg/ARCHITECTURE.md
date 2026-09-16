@@ -14,18 +14,19 @@ governor, Increment 3 implemented bounded conditional option definitions and
 static validation, Increment 4 implements guarded graph execution against injected
 adapters, Increment 5 implements a durable append-only audit journal, and Increment
 6 implements three offline control policies, Increment 7 implements the
-provider-independent single-attempt adapter boundary, and Increment 8 implements
-selection-to-execution orchestration. Real provider transports and the Iceberg
+provider-independent single-attempt adapter boundary, Increment 8 implements
+selection-to-execution orchestration, and Increment 9 implements exact offline
+coverage and observation accounting. Real provider transports and the Iceberg
 acquisition policy remain deferred to separately reviewed increments.
 
 ## Dependency direction
 
 ```text
-                 contracts
-                /    |    \
-            core  policies  adapters
-              \       |       /
-                    testing
+                       contracts
+                 /       |       |       \
+              core   policies  adapters  evaluation
+                 \       |       |       /
+                         testing
 ```
 
 The diagram indicates allowed knowledge, not runtime control:
@@ -40,6 +41,8 @@ The diagram indicates allowed knowledge, not runtime control:
    authorization, or import a reference tree directly.
 5. `testing` may import any Iceberg layer to provide deterministic fakes and
    contract fixtures. Production layers cannot import `testing`.
+6. `evaluation` may import only contracts. It accounts for supplied observations;
+   it cannot execute options, infer missing outcomes, or mutate runtime state.
 
 Cross-layer interaction will use contracts defined in later, separately reviewed
 increments. These rules keep selection, admission, execution, and provider
@@ -66,6 +69,7 @@ transport independently testable.
 | `policies.random_mixture` | Seeded logged-propensity control | Increment 6 — implemented |
 | `contracts.adapters` | Provider-independent attempt/result interface | Increment 7 — implemented |
 | `adapters` | Single-attempt boundary; reviewed provider translations | Increment 7 boundary implemented; provider transports deferred |
+| `evaluation` | Exact coverage/cost/feedback observation accounting | Increment 9 — implemented |
 | `testing` | Fake providers, checkers, and common fixtures | Increment 2 onward — scripted adapters implemented |
 
 ## Non-goals
@@ -103,3 +107,9 @@ the decision before execution, and records the realized trace afterward. It does
 not make policy, journal, ledger, and provider work one atomic transaction. A
 duplicate decision fails closed before another execution; crash recovery across
 these boundaries remains deferred.
+
+Increment 9 keeps every original-workload row in the reporting denominator, stores
+rates as exact integer fractions, totals only known fixed-unit cost, and separately
+counts unresolved-cost attempts. User votes, objective results, and checker results
+remain separate channels. Executed traces and synthetic tables cannot be aggregated
+together. This is accounting infrastructure, not baseline parity or quality evidence.

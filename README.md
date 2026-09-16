@@ -45,9 +45,9 @@ The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited
 Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
 `iceberg/`. Increments 0–8 establish boundaries, portable contracts, a single-host
 budget authority, bounded option graphs, guarded execution and audit, offline
-control policies, an injected single-attempt adapter boundary, and end-to-end
-orchestration. There is still no real provider integration, upstream reproduction,
-or Iceberg acquisition policy. See
+control policies, an injected single-attempt adapter boundary, end-to-end
+orchestration, and exact offline evaluation accounting. There is still no real
+provider integration, upstream reproduction, or Iceberg acquisition policy. See
 `iceberg/ARCHITECTURE.md` before adding product code. Reference directories must
 remain unchanged and must not be imported as runtime packages.
 

@@ -3,7 +3,7 @@
 This directory is the Iceberg-owned implementation workspace. The top-level
 reference repositories remain evidence and are not runtime dependencies.
 
-## Current status: Increment 8
+## Current status: Increment 9
 
 Increment 0 established package ownership and dependency boundaries. Increment 1
 implemented portable contracts. Increment 2 added the SQLite liability ledger and
@@ -26,6 +26,9 @@ retries.
 Increment 8 adds an `IcebergRouter` coordinator that validates a common candidate
 snapshot, obtains and audits a pure policy decision, executes only its selected
 validated option through the guarded executor, and audits the realized trace.
+Increment 9 adds exact offline evaluation accounting for service coverage,
+deferrals, failures, pending outcomes, known cost, unresolved-cost attempts,
+selection counts, and independent feedback channels.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
@@ -34,13 +37,14 @@ The authoritative Python package lives under `src/iceberg_router`. Its layers ar
 - `policies`: pure selection mechanisms; may depend on contracts but cannot spend;
 - `adapters`: translations at provider/upstream boundaries; no policy decisions;
 - `testing`: Iceberg-owned deterministic fakes and fixtures, never benchmark proof.
+- `evaluation`: pure accounting over executed or explicitly synthetic observations.
 
 Detailed import rules and deferred work are recorded in
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Local validation
 
-No installation is necessary for the Increment 0 through Increment 8 checks:
+No installation is necessary for the Increment 0 through Increment 9 checks:
 
 ```sh
 python -m unittest discover -s tests -v
@@ -64,3 +68,6 @@ audited deferral, candidate/option parity, graph-bound reconciliation, immutable
 option snapshots, policy contract enforcement, and duplicate-decision fail-closed
 behavior. Passing these tests does not validate an external provider or an adaptive
 routing policy. These are deterministic fixtures, not routing-quality evidence.
+Increment 9 tests verify original-workload denominators, exact fractional rates,
+unknown-cost preservation, independent feedback counts, evidence-kind separation,
+and portable fixed-unit totals. They do not reproduce an upstream benchmark.
