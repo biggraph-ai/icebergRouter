@@ -6,8 +6,10 @@ feedback records under `src/iceberg_router/contracts`; Increment 2 implements th
 single-host ledger/governor; Increment 3 implements bounded option definitions and
 static graph validation; Increment 4 implements guarded execution against injected
 adapters; Increment 5 implements the local append-only outcome journal; and
-Increment 6 implements fixed, task-rule, and random-mixture controls. Real provider
-adapters and the adaptive Iceberg policy remain specifications for later increments.
+Increment 6 implements fixed, task-rule, and random-mixture controls; and Increment
+7 implements the provider-independent operation context/result protocol and a
+single-invocation wrapper. Real provider transports and the adaptive Iceberg policy
+remain specifications for later increments.
 
 ## Portable scalar rules
 
@@ -31,6 +33,12 @@ reported usage or `unknown`, and settlement evidence.
 Requirements: execute only authorized operations; make each conditional branch and
 nested/retry attempt visible; never create authorization; never declare an unknown
 charge to be zero; do not conflate provider fallback with quality escalation.
+
+The Increment 7 adapter wrapper invokes its injected transport once, validates the
+declared operation kind and version, requires a normalized typed result, and lets
+exceptions reach the executor's unknown-usage path. This establishes no guarantee about work
+hidden behind that transport. A provider integration is unacceptable until SDK or
+gateway retries/fallbacks are disabled or separately intercepted and authorized.
 
 ## `RoutingPolicy`
 

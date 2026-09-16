@@ -17,6 +17,11 @@ or unknown usage retain it as pending; an unfunded later branch defers explicitl
 and a reported bound breach halts execution and further admission. Adapter timeout
 and cancellation enforcement remain provider-specific, unverified behavior.
 
+Increment 7 adds no provider pricing or timeout claim. Its wrapper performs one
+call into an injected transport, but cannot prove that the transport, SDK, or remote
+gateway performs only one billable attempt. Such hidden work remains outside the
+budget guarantee until separately reviewed and intercepted.
+
 ## Quantities
 
 - `budget`: exact fixed-unit shared ceiling.

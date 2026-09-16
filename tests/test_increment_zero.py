@@ -15,6 +15,7 @@ EXPECTED_MODULES = {
     "iceberg_router",
     "iceberg_router.contracts",
     "iceberg_router.contracts._validation",
+    "iceberg_router.contracts.adapters",
     "iceberg_router.contracts.decisions",
     "iceberg_router.contracts.events",
     "iceberg_router.contracts.feedback",

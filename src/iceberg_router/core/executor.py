@@ -8,6 +8,11 @@ from types import MappingProxyType
 from typing import Mapping, Protocol
 from uuid import uuid4
 
+from iceberg_router.contracts.adapters import (
+    OperationAdapter,
+    OperationContext,
+    OperationResult,
+)
 from iceberg_router.contracts.decisions import CostEstimate, EstimateState
 from iceberg_router.contracts.events import TraceEvent, TraceEventKind, UsageState
 from iceberg_router.contracts.identifiers import (
@@ -20,7 +25,6 @@ from iceberg_router.contracts.identifiers import (
     RequestId,
     ReservationId,
 )
-from iceberg_router.contracts.money import Nanodollars
 from iceberg_router.contracts.options import (
     BranchOutcome,
     OperationKind,
@@ -44,10 +48,6 @@ class IdentityFactory(Protocol):
 
 class Clock(Protocol):
     def now(self) -> str: ...
-
-
-class OperationAdapter(Protocol):
-    def execute(self, context: OperationContext) -> OperationResult: ...
 
 
 class RandomIdentityFactory:
@@ -80,47 +80,6 @@ class ExecutionRequest:
                 raise TypeError(f"{field} must be {expected.__name__}")
         if not isinstance(self.applicable, bool):
             raise TypeError("applicable must be bool")
-
-
-@dataclass(frozen=True, slots=True)
-class OperationContext:
-    request_id: RequestId
-    decision_id: DecisionId
-    node: OperationNode
-    attempt_number: int
-    attempt_id: AttemptId
-    authorization_id: AuthorizationId
-    reservation_id: ReservationId
-    payload: object
-
-
-@dataclass(frozen=True, slots=True)
-class OperationResult:
-    outcome: BranchOutcome
-    usage_state: UsageState
-    actual_cost: Nanodollars | None
-    output_reference: str | None = None
-    provider_receipt: str | None = None
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.outcome, BranchOutcome):
-            raise TypeError("outcome must be BranchOutcome")
-        if self.outcome is BranchOutcome.UNFUNDED:
-            raise ValueError("adapters cannot report the governor-owned unfunded outcome")
-        if not isinstance(self.usage_state, UsageState):
-            raise TypeError("usage_state must be UsageState")
-        if self.usage_state is UsageState.KNOWN and not isinstance(
-            self.actual_cost, Nanodollars
-        ):
-            raise ValueError("known usage requires actual_cost")
-        if self.usage_state is UsageState.UNKNOWN and self.actual_cost is not None:
-            raise ValueError("unknown usage cannot carry actual_cost")
-        for value, field in (
-            (self.output_reference, "output_reference"),
-            (self.provider_receipt, "provider_receipt"),
-        ):
-            if value is not None and (not isinstance(value, str) or not value):
-                raise ValueError(f"{field} must be a non-empty string or None")
 
 
 @dataclass(frozen=True, slots=True)

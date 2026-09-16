@@ -6,7 +6,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from iceberg_router.core.executor import OperationContext, OperationResult
+from iceberg_router.contracts.adapters import OperationContext, OperationResult
 
 
 class DeterministicIdentityFactory:

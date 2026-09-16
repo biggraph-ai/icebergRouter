@@ -13,8 +13,9 @@ contracts, Increment 2 implemented the single-host SQLite ledger and admission
 governor, Increment 3 implemented bounded conditional option definitions and
 static validation, Increment 4 implements guarded graph execution against injected
 adapters, Increment 5 implements a durable append-only audit journal, and Increment
-6 implements three offline control policies. Real provider transport and the
-Iceberg acquisition policy remain deferred to separately reviewed increments.
+6 implements three offline control policies, and Increment 7 implements the
+provider-independent single-attempt adapter boundary. Real provider transports and
+the Iceberg acquisition policy remain deferred to separately reviewed increments.
 
 ## Dependency direction
 
@@ -61,7 +62,8 @@ transport independently testable.
 | `policies.fixed` | Fixed-option selection control | Increment 6 — implemented |
 | `policies.task_rule` | Deterministic task-rule control | Increment 6 — implemented |
 | `policies.random_mixture` | Seeded logged-propensity control | Increment 6 — implemented |
-| `adapters` | Reviewed upstream/provider translations | Increment 7 or later |
+| `contracts.adapters` | Provider-independent attempt/result interface | Increment 7 — implemented |
+| `adapters` | Single-attempt boundary; reviewed provider translations | Increment 7 boundary implemented; provider transports deferred |
 | `testing` | Fake providers, checkers, and common fixtures | Increment 2 onward — scripted adapters implemented |
 
 ## Non-goals
@@ -84,3 +86,10 @@ cannot import the governor or executor, and therefore cannot authorize spending.
 The random-mixture control samples a configured finite-decimal distribution without
 binary floating point and logs the probability of the realized selection or
 aggregate deferral. It is a control baseline, not an adaptive Iceberg policy.
+
+Increment 7 moves the operation context, normalized result, and structural adapter
+protocol into the portable contract layer. Its `SingleAttemptAdapter` validates the
+operation kind and version and calls an injected transport once without adding
+retries, fallbacks, pricing inference, or zero-usage defaults. It cannot detect retries
+hidden inside the injected SDK or gateway; each real transport still requires
+provider-specific review and an enforceable liability analysis.

@@ -1,5 +1,6 @@
 """Portable value and event contracts implemented in Increment 1."""
 
+from .adapters import OperationAdapter, OperationContext, OperationResult
 from .decisions import (
     CandidateDecision,
     CostEstimate,
@@ -76,6 +77,9 @@ __all__ = (
     "OperationKind",
     "OperationLimits",
     "OperationNode",
+    "OperationAdapter",
+    "OperationContext",
+    "OperationResult",
     "OutputId",
     "PolicyVersion",
     "Probability",
