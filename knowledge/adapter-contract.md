@@ -1,7 +1,13 @@
-# Proposed common contracts (pre-implementation)
+# Common contract specification
 
-This document defines semantic requirements, not an invented upstream API. Names
-are proposed Iceberg-owned boundaries and may change after the source audit.
+This document defines Iceberg-owned semantic requirements, not an upstream API.
+Increment 1 implements the portable scalar, decision, execution/usage-event, and
+feedback records under `src/iceberg_router/contracts`; Increment 2 implements the
+single-host ledger/governor; Increment 3 implements bounded option definitions and
+static graph validation; Increment 4 implements guarded execution against injected
+adapters; Increment 5 implements the local append-only outcome journal; and
+Increment 6 implements fixed, task-rule, and random-mixture controls. Real provider
+adapters and the adaptive Iceberg policy remain specifications for later increments.
 
 ## Portable scalar rules
 
@@ -56,6 +62,12 @@ settlement records. Corrections append compensating/versioned records rather tha
 rewriting history. The schema distinguishes native policy choice from a common
 guard rejection and distinguishes synthetic counterfactual tables from executed
 paths.
+
+Increment 5 supplies a closed event-type journal, canonical portable JSON payloads,
+atomic batches, idempotency keys, explicit correction links, SQLite mutation
+guards, and a verifiable hash chain. Authorization and settlement have generic
+journal record types but are not yet automatically coupled to ledger transactions;
+callers must reconcile journal coverage against authoritative ledger state.
 
 ## `FeedbackStore`
 
