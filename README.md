@@ -40,5 +40,22 @@ Read `AGENTS.md`, then `STUDY_ORDER.md`. Use the first prompt in `HANDOFF_PROMPT
 
 The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited.docx`. Keep that original nearby; it is not redistributed or rewritten here. `requirements/PLAN_CONSTRAINTS.md` is a working synthesis of the decisions in this conversation, not a verbatim copy of that document.
 
+## Product implementation workspace
+
+Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
+`iceberg/`. Increments 0–8 establish boundaries, portable contracts, a single-host
+budget authority, bounded option graphs, guarded execution and audit, offline
+control policies, an injected single-attempt adapter boundary, end-to-end
+orchestration, exact offline evaluation accounting, and visibility-bounded feedback
+snapshots. There is still no real provider integration, upstream reproduction,
+feedback adaptation, or Iceberg acquisition policy. See
+`iceberg/ARCHITECTURE.md` before adding product code. Reference directories must
+remain unchanged and must not be imported as runtime packages.
+
+The analyzed enhancement backlog is in
+[`iceberg/ENHANCEMENT_TASKS.md`](iceberg/ENHANCEMENT_TASKS.md). It preserves the
+requested PR 0–8 acceptance conditions and distinguishes observed gaps from
+proposed work.
+
 ## Validation
 Run `python -m unittest discover -s tests -v` for the downloader's local tests. See `TEST_STATUS.md` for what was actually tested. No upstream build or paper-result reproduction is claimed.
