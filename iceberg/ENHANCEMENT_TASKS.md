@@ -112,31 +112,31 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Separate semantic branch normalization from financial/receipt normalization.
+- [x] Separate semantic branch normalization from financial/receipt normalization.
       Preserve `usage_state`, `actual_cost`, and `provider_receipt` when mapping an
       invalid semantic outcome to a typed error/unknown branch.
-- [ ] Settle every known invoice before deciding whether its semantic response is
+- [x] Settle every known invoice before deciding whether its semantic response is
       usable.
-- [ ] Add a typed trace/event distinction between invalid semantic outcome and
+- [x] Add a typed trace/event distinction between invalid semantic outcome and
       unknown financial usage.
-- [ ] Add a halt check to new authorization creation for held reservations.
-- [ ] Apply the same check to combined reserve-and-authorize and separate authorize.
-- [ ] Perform exact authorization replay lookup before the halt rejection so an
+- [x] Add a halt check to new authorization creation for held reservations.
+- [x] Apply the same check to combined reserve-and-authorize and separate authorize.
+- [x] Perform exact authorization replay lookup before the halt rejection so an
       already issued identical record remains readable/idempotent without creating
       new authority.
-- [ ] Keep settlement, pending reconciliation, and exact invoice replay available
+- [x] Keep settlement, pending reconciliation, and exact invoice replay available
       after halt.
-- [ ] Document that post-breach recording cannot retroactively enforce an upstream
+- [x] Document that post-breach recording cannot retroactively enforce an upstream
       provider bound.
 
 **Acceptance regressions**
 
-- [ ] Bound 5 + invalid semantic outcome + known cost 20 records confirmed spend 20,
+- [x] Bound 5 + invalid semantic outcome + known cost 20 records confirmed spend 20,
       retains the receipt, marks breach, and halts the budget.
-- [ ] A held-only reservation cannot receive a new attempt authorization after halt.
-- [ ] Both authorization entry points enforce the same halt semantics.
-- [ ] Identical authorization and invoice replays remain idempotent.
-- [ ] Timeout/exception with no authoritative usage remains pending, never zero.
+- [x] A held-only reservation cannot receive a new attempt authorization after halt.
+- [x] Both authorization entry points enforce the same halt semantics.
+- [x] Identical authorization and invoice replays remain idempotent.
+- [x] Timeout/exception with no authoritative usage remains pending, never zero.
 
 ---
 

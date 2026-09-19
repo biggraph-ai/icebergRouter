@@ -122,3 +122,10 @@ water mark are part of snapshot identity, preventing later or backfilled events 
 silently changing a reproduced snapshot. It does not train, update, or evaluate an
 adaptive policy, and multiple evaluator observations are preserved rather than
 collapsed into invented ground truth.
+
+PR 1 hardening makes financial normalization independent of semantic normalization:
+an invalid branch outcome cannot erase known cost or receipt data. Over-bound cost
+is recorded before the budget halts, and halt prevents new authorization even on an
+older hold while allowing exact issued-record replay and reconciliation. The hard
+budget promise remains conditional on upstream liability respecting its authorized
+bound; post-breach accounting cannot reverse an external charge.

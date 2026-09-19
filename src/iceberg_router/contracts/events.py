@@ -25,6 +25,7 @@ class TraceEventKind(str, Enum):
     BRANCH_SELECTED = "branch_selected"
     ATTEMPT_STARTED = "attempt_started"
     ATTEMPT_FINISHED = "attempt_finished"
+    INVALID_OUTCOME = "invalid_outcome"
     ADMISSION_DENIED = "admission_denied"
     BUDGET_BREACH = "budget_breach"
     OPTION_FINISHED = "option_finished"

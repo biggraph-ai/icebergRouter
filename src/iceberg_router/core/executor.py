@@ -283,10 +283,20 @@ class OptionExecutor:
                 )
             allowed = {branch.outcome for branch in node.branches}
             if result.outcome not in allowed:
+                invalid_outcome = result.outcome
                 result = OperationResult(
                     BranchOutcome.UNKNOWN,
-                    UsageState.UNKNOWN,
-                    None,
+                    result.usage_state,
+                    result.actual_cost,
+                    result.output_reference,
+                    result.provider_receipt,
+                )
+                emit(
+                    TraceEventKind.INVALID_OUTCOME,
+                    node.node_id,
+                    f"{invalid_outcome.value}_not_allowed",
+                    attempt_id=attempt_id,
+                    authorization_id=authorization_id,
                 )
 
             attempt = AttemptExecution(

@@ -295,6 +295,7 @@ class SQLiteBudgetLedger:
                 return record
             if ReservationState(reservation["state"]) is not ReservationState.HELD:
                 raise InvalidTransition("only a held reservation can authorize an attempt")
+            self._require_authorization_open(connection, reservation)
             try:
                 connection.execute(
                     """
@@ -397,6 +398,7 @@ class SQLiteBudgetLedger:
                 return self._record(reservation_row), authorization
             if ReservationState(reservation_row["state"]) is not ReservationState.HELD:
                 raise InvalidTransition("only a held reservation can authorize an attempt")
+            self._require_authorization_open(connection, reservation_row)
             try:
                 connection.execute(
                     """
@@ -568,6 +570,19 @@ class SQLiteBudgetLedger:
         ).fetchone()
         if row is None:
             raise InvalidTransition("reservation has no authorized attempt")
+
+    @staticmethod
+    def _require_authorization_open(
+        connection: sqlite3.Connection, reservation: sqlite3.Row
+    ) -> None:
+        budget = connection.execute(
+            "SELECT halted FROM budgets WHERE budget_id = ?",
+            (reservation["budget_id"],),
+        ).fetchone()
+        if budget is None:
+            raise BudgetNotFound(f"budget {reservation['budget_id']!r} does not exist")
+        if bool(budget["halted"]):
+            raise AdmissionDenied("budget is halted after a contract breach")
 
     @staticmethod
     def _record(row: sqlite3.Row | None) -> ReservationRecord:

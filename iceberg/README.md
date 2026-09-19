@@ -31,6 +31,9 @@ deferrals, failures, pending outcomes, known cost, unresolved-cost attempts,
 selection counts, and independent feedback channels.
 Increment 10 adds journal-backed feedback ingestion and deterministic visibility
 snapshots with a journal-sequence high-water mark for leakage-safe replay.
+PR 1 financial hardening preserves known invoices across invalid semantic outcomes,
+records over-bound bills before halting, and blocks new attempt authorization on
+preexisting holds after halt. Unknown usage remains pending.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 

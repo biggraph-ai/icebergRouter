@@ -22,6 +22,15 @@ call into an injected transport, but cannot prove that the transport, SDK, or re
 gateway performs only one billable attempt. Such hidden work remains outside the
 budget guarantee until separately reviewed and intercepted.
 
+PR 1 financial-truth hardening preserves known cost and provider receipt even when
+the semantic outcome is invalid for the graph. Known invoices settle before the
+normalized error/unknown branch is followed. An invoice above its authorization is
+recorded in full and halts creation of every new attempt authorization, including
+authorization against a hold created before the breach. Exact replay of an already
+issued authorization and settlement/reconciliation remain permitted while halted.
+This records the real liability after a violation; it cannot undo the external bill
+or turn an unenforceable upstream price into a hard pre-dispatch guarantee.
+
 ## Quantities
 
 - `budget`: exact fixed-unit shared ceiling.

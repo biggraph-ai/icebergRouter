@@ -5,9 +5,10 @@ Date: 19 September 2026.
 Required product command executed:
 `PYTHONPATH=src python -m unittest discover -s tests/product -t . -v`
 
-Result: 112 product tests ran successfully: 109 passed and three documented expected
-failures record two PR 1 financial-truth defects and the PR 3 public identical-retry
-contract. Expected failures are owner-tagged requirements, not accepted behavior.
+Result: 112 product tests ran successfully: 111 passed and one documented expected
+failure records the PR 3 public identical-retry contract. The two former PR 1
+financial-truth expected failures are now ordinary passing regressions. Expected
+failures are owner-tagged requirements, not accepted behavior.
 They are separate from, and do not weaken, the passing current-behavior and
 append-only/conflicting-identity tests. The complete product suite produced the
 same result from a temporary clean product-only tree with no reference repositories.
@@ -27,6 +28,11 @@ paper are available in this workspace, but their original upstream commit
 identities are not preserved. Upstream packages were not installed, checkpoint
 files were not loaded, upstream tests were not run, and no paper results were
 reproduced.
+
+Focused PR 1 command executed:
+`PYTHONPATH=src python -m unittest tests.product.test_known_regressions tests.product.test_increment_two_budget tests.product.test_increment_four_executor -v`
+
+Result: all 23 financial-truth, ledger, and executor tests passed.
 
 No claim of supported behavior for every provider or operating system is made. The
 product CI matrix declares Python 3.10–3.13; that hosted matrix was added but was
