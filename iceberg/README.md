@@ -43,6 +43,10 @@ The authoritative Python package lives under `src/iceberg_router`. Its layers ar
 
 Detailed import rules and deferred work are recorded in
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
+The reviewed PR 0–8 enhancement sequence, observed gaps, dependencies, and
+acceptance regressions are tracked in
+[`ENHANCEMENT_TASKS.md`](ENHANCEMENT_TASKS.md). Its checkboxes are proposed work,
+not completed features.
 
 ## Local validation
 

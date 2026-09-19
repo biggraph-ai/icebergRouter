@@ -45,6 +45,11 @@ implementation approval as stated.
     exist through Increment 10, but
     upstream reproduction and Iceberg-specific acquisition policy implementation
     remain prohibited until their applicable gates pass.
+12. **Reanalysis artifact discrepancy:** the enhancement decision refers to
+    `REANALYSIS.md` and `results/`, but neither path exists in this checkout as of
+    19 September 2026. The supplied statement that 27 source files match the prior
+    review manifest is not a substitute for the missing artifacts or their hashes.
+    Locate/import them through review before using their contents as evidence.
 
 ## Explicitly not blocked / corrected stale status
 
