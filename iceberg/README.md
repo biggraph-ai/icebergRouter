@@ -48,15 +48,34 @@ acceptance regressions are tracked in
 [`ENHANCEMENT_TASKS.md`](ENHANCEMENT_TASKS.md). Its checkboxes are proposed work,
 not completed features.
 
-## Local validation
+## Offline product validation
 
-No installation is necessary for the Increment 0 through Increment 10 checks:
+Supported Python versions are 3.10 through 3.13. No installation, reference
+checkout, credentials, network access, dataset, checkpoint, or empty placeholder
+directory is necessary for the product suite:
 
 ```sh
-python -m unittest discover -s tests -v
+PYTHONPATH=src python -m unittest discover -s tests/product -t . -v
 ```
 
-The tests add `src/` to their import path. Structural tests verify package layout
+The command intentionally bypasses package installation. Building a wheel or
+editable install uses the `setuptools>=68` build requirement and may cause a build
+frontend to fetch that backend unless it is already available in an explicitly
+prepared offline environment.
+
+Downloader and optional reference-layout checks are separate study tooling:
+
+```sh
+python -m unittest discover -s tests/study -t . -v
+```
+
+Reference checks read `provenance/reference-layout.json`. The canonical downloader
+layout is `references/repos/<lowercase-id>`; legacy root-level folders are recognized
+only for this study checkout. With no configured reference tree, presence checks
+skip rather than making product validation fail. Set `ICEBERG_REFERENCE_ROOT` to an
+explicit canonical checkout root when needed.
+
+The product tests add `src/` to their import path. Structural tests verify package layout
 and dependency direction; contract tests cover strict validation, immutable values,
 checked arithmetic, explicit unknown states, and JSON round trips. Increment 2
 tests exercise the ledger against temporary local SQLite databases.

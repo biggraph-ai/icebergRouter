@@ -58,4 +58,18 @@ requested PR 0–8 acceptance conditions and distinguishes observed gaps from
 proposed work.
 
 ## Validation
-Run `python -m unittest discover -s tests -v` for the downloader's local tests. See `TEST_STATUS.md` for what was actually tested. No upstream build or paper-result reproduction is claimed.
+Run the offline product tests without installing the package or acquiring references:
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests/product -t . -v
+```
+
+Study/downloader checks are separate and optional:
+
+```sh
+python -m unittest discover -s tests/study -t . -v
+```
+
+See `iceberg/README.md` for supported Python versions, reference-layout
+configuration, and build-isolation limitations. See `TEST_STATUS.md` for what was
+actually tested. No upstream build or paper-result reproduction is claimed.

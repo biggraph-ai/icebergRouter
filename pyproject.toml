@@ -9,6 +9,13 @@ description = "Governed baseline runtime scaffold for IcebergRouter"
 readme = "iceberg/README.md"
 requires-python = ">=3.10"
 dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
