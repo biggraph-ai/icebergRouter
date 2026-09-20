@@ -43,6 +43,82 @@ class TerminalStatus(str, Enum):
     FAILED = "failed"
 
 
+class ArtifactRole(str, Enum):
+    ORIGINAL_REQUEST = "original_request"
+    CANDIDATE_ANSWER = "candidate_answer"
+    RETRIEVED_EVIDENCE = "retrieved_evidence"
+    CHECKER_EVIDENCE = "checker_evidence"
+    DIAGNOSTIC = "diagnostic"
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactDeclaration:
+    role: ArtifactRole
+    version: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.role, ArtifactRole):
+            raise TypeError("role must be ArtifactRole")
+        require_text(self.version, "version", maximum=128)
+
+    def to_json(self) -> dict[str, str]:
+        return {"role": self.role.value, "version": self.version}
+
+    @classmethod
+    def from_json(cls, value: object) -> ArtifactDeclaration:
+        obj = require_mapping(value, "artifact declaration")
+        require_exact_keys(obj, "artifact declaration", {"role", "version"})
+        try:
+            role = ArtifactRole(obj["role"])
+        except (TypeError, ValueError) as error:
+            raise ValueError("artifact role is invalid") from error
+        return cls(role, require_text(obj["version"], "version", maximum=128))
+
+
+@dataclass(frozen=True, slots=True)
+class InputBinding:
+    input_name: str
+    source_node_id: NodeId | None
+    role: ArtifactRole
+
+    def __post_init__(self) -> None:
+        require_text(self.input_name, "input_name", maximum=128)
+        if self.source_node_id is not None and not isinstance(self.source_node_id, NodeId):
+            raise TypeError("source_node_id must be NodeId or None")
+        if not isinstance(self.role, ArtifactRole):
+            raise TypeError("role must be ArtifactRole")
+        if self.source_node_id is None and self.role is not ArtifactRole.ORIGINAL_REQUEST:
+            raise ValueError("only original_request may use the request source")
+        if self.source_node_id is not None and self.role is ArtifactRole.ORIGINAL_REQUEST:
+            raise ValueError("original_request must use the request source")
+
+    def to_json(self) -> dict[str, str | None]:
+        return {
+            "inputName": self.input_name,
+            "sourceNodeId": (
+                None if self.source_node_id is None else self.source_node_id.to_json()
+            ),
+            "role": self.role.value,
+        }
+
+    @classmethod
+    def from_json(cls, value: object) -> InputBinding:
+        obj = require_mapping(value, "input binding")
+        require_exact_keys(
+            obj, "input binding", {"inputName", "sourceNodeId", "role"}
+        )
+        source = obj["sourceNodeId"]
+        try:
+            role = ArtifactRole(obj["role"])
+        except (TypeError, ValueError) as error:
+            raise ValueError("input binding role is invalid") from error
+        return cls(
+            require_text(obj["inputName"], "inputName", maximum=128),
+            None if source is None else NodeId.from_json(source),
+            role,
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class ApplicabilityRule:
     rule_id: str
@@ -144,6 +220,8 @@ class OperationNode:
     limits: OperationLimits
     operation_version: str
     branches: tuple[Branch, ...]
+    input_bindings: tuple[InputBinding, ...]
+    output: ArtifactDeclaration | None
 
     def __post_init__(self) -> None:
         if not isinstance(self.node_id, NodeId):
@@ -164,6 +242,15 @@ class OperationNode:
         outcomes = [branch.outcome for branch in self.branches]
         if len(outcomes) != len(set(outcomes)):
             raise ValueError("branch outcomes must be unique within a node")
+        if not isinstance(self.input_bindings, tuple):
+            raise TypeError("input_bindings must be a tuple")
+        if any(not isinstance(binding, InputBinding) for binding in self.input_bindings):
+            raise TypeError("input_bindings must contain InputBinding values")
+        names = [binding.input_name for binding in self.input_bindings]
+        if len(names) != len(set(names)):
+            raise ValueError("input binding names must be unique within a node")
+        if self.output is not None and not isinstance(self.output, ArtifactDeclaration):
+            raise TypeError("output must be ArtifactDeclaration or None")
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -175,6 +262,8 @@ class OperationNode:
             "limits": self.limits.to_json(),
             "operationVersion": self.operation_version,
             "branches": [branch.to_json() for branch in self.branches],
+            "inputBindings": [binding.to_json() for binding in self.input_bindings],
+            "output": None if self.output is None else self.output.to_json(),
         }
 
     @classmethod
@@ -192,6 +281,8 @@ class OperationNode:
                 "limits",
                 "operationVersion",
                 "branches",
+                "inputBindings",
+                "output",
             },
         )
         if obj["nodeType"] != "operation":
@@ -203,6 +294,9 @@ class OperationNode:
         branches = obj["branches"]
         if not isinstance(branches, list):
             raise TypeError("branches must be an array")
+        input_bindings = obj["inputBindings"]
+        if not isinstance(input_bindings, list):
+            raise TypeError("inputBindings must be an array")
         return cls(
             node_id=NodeId.from_json(obj["nodeId"]),
             kind=kind,
@@ -213,6 +307,14 @@ class OperationNode:
                 obj["operationVersion"], "operationVersion", maximum=128
             ),
             branches=tuple(Branch.from_json(branch) for branch in branches),
+            input_bindings=tuple(
+                InputBinding.from_json(binding) for binding in input_bindings
+            ),
+            output=(
+                None
+                if obj["output"] is None
+                else ArtifactDeclaration.from_json(obj["output"])
+            ),
         )
 
 
@@ -221,6 +323,7 @@ class TerminalNode:
     node_id: NodeId
     status: TerminalStatus
     result_code: str
+    answer_binding: InputBinding | None
 
     def __post_init__(self) -> None:
         if not isinstance(self.node_id, NodeId):
@@ -228,6 +331,17 @@ class TerminalNode:
         if not isinstance(self.status, TerminalStatus):
             raise TypeError("status must be TerminalStatus")
         require_text(self.result_code, "result_code", maximum=128)
+        if self.answer_binding is not None and not isinstance(
+            self.answer_binding, InputBinding
+        ):
+            raise TypeError("answer_binding must be InputBinding or None")
+        if self.status is TerminalStatus.COMPLETE and self.answer_binding is None:
+            raise ValueError("complete terminal requires an answer binding")
+        if (
+            self.answer_binding is not None
+            and self.answer_binding.role is not ArtifactRole.CANDIDATE_ANSWER
+        ):
+            raise ValueError("terminal answer binding must select a candidate answer")
 
     def to_json(self) -> dict[str, str]:
         return {
@@ -235,13 +349,18 @@ class TerminalNode:
             "nodeId": self.node_id.to_json(),
             "status": self.status.value,
             "resultCode": self.result_code,
+            "answerBinding": (
+                None if self.answer_binding is None else self.answer_binding.to_json()
+            ),
         }
 
     @classmethod
     def from_json(cls, value: object) -> TerminalNode:
         obj = require_mapping(value, "terminal node")
         require_exact_keys(
-            obj, "terminal node", {"nodeType", "nodeId", "status", "resultCode"}
+            obj,
+            "terminal node",
+            {"nodeType", "nodeId", "status", "resultCode", "answerBinding"},
         )
         if obj["nodeType"] != "terminal":
             raise ValueError("terminal nodeType must be 'terminal'")
@@ -253,6 +372,9 @@ class TerminalNode:
             NodeId.from_json(obj["nodeId"]),
             status,
             require_text(obj["resultCode"], "resultCode", maximum=128),
+            None
+            if obj["answerBinding"] is None
+            else InputBinding.from_json(obj["answerBinding"]),
         )
 
 
@@ -270,6 +392,7 @@ class OptionDefinition:
     max_transitions: int
     max_total_attempts: int
     nodes: tuple[OptionNode, ...]
+    schema_version: str = "1"
 
     def __post_init__(self) -> None:
         for value, expected, field in (
@@ -298,6 +421,8 @@ class OptionDefinition:
             raise ValueError("nodes must be a non-empty tuple")
         if any(not isinstance(node, (OperationNode, TerminalNode)) for node in self.nodes):
             raise TypeError("nodes must contain operation or terminal nodes")
+        if self.schema_version != "1":
+            raise ValueError("unsupported option schema_version")
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -310,6 +435,7 @@ class OptionDefinition:
             "maxTransitions": self.max_transitions,
             "maxTotalAttempts": self.max_total_attempts,
             "nodes": [node.to_json() for node in self.nodes],
+            "schemaVersion": self.schema_version,
         }
 
     @classmethod
@@ -328,6 +454,7 @@ class OptionDefinition:
                 "maxTransitions",
                 "maxTotalAttempts",
                 "nodes",
+                "schemaVersion",
             },
         )
         raw_nodes = obj["nodes"]
@@ -355,4 +482,7 @@ class OptionDefinition:
             max_transitions=obj["maxTransitions"],
             max_total_attempts=obj["maxTotalAttempts"],
             nodes=tuple(nodes),
+            schema_version=require_text(
+                obj["schemaVersion"], "schemaVersion", maximum=16
+            ),
         )

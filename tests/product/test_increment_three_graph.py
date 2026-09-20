@@ -11,10 +11,13 @@ from iceberg_router.contracts import (  # noqa: E402
     AccountId,
     ApplicabilityRule,
     ApplicabilityVersion,
+    ArtifactDeclaration,
+    ArtifactRole,
     BoundVersion,
     Branch,
     BranchOutcome,
     EstimatorVersion,
+    InputBinding,
     MAX_NANODOLLARS,
     Nanodollars,
     NodeId,
@@ -54,6 +57,7 @@ def model_node(
     unfunded: str = "defer",
     liability: int,
     max_attempts: int = 1,
+    inputs: tuple[InputBinding, ...] | None = None,
 ) -> OperationNode:
     return OperationNode(
         node_id=NodeId(name),
@@ -65,6 +69,10 @@ def model_node(
         branches=branches(
             success=success, error=error, unknown=unknown, unfunded=unfunded
         ),
+        input_bindings=inputs
+        if inputs is not None
+        else (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
+        output=ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
     )
 
 
@@ -96,12 +104,16 @@ def valid_option() -> OptionDefinition:
         limits=limits(),
         operation_version="checker-v1",
         branches=(
-            Branch(BranchOutcome.PASS, NodeId("complete")),
+            Branch(BranchOutcome.PASS, NodeId("complete-draft")),
             Branch(BranchOutcome.FAIL, NodeId("repair")),
             Branch(BranchOutcome.UNKNOWN, NodeId("defer")),
             Branch(BranchOutcome.ERROR, NodeId("defer")),
             Branch(BranchOutcome.UNFUNDED, NodeId("defer")),
         ),
+        input_bindings=(
+            InputBinding("candidate", NodeId("draft"), ArtifactRole.CANDIDATE_ANSWER),
+        ),
+        output=ArtifactDeclaration(ArtifactRole.CHECKER_EVIDENCE, "checker-v1"),
     )
     repair = model_node(
         "repair",
@@ -110,15 +122,26 @@ def valid_option() -> OptionDefinition:
         unknown="failed",
         liability=20,
         max_attempts=2,
+        inputs=(
+            InputBinding("candidate", NodeId("draft"), ArtifactRole.CANDIDATE_ANSWER),
+            InputBinding("checker", NodeId("verify"), ArtifactRole.CHECKER_EVIDENCE),
+        ),
     )
     return option(
         (
             draft,
             verify,
             repair,
-            TerminalNode(NodeId("complete"), TerminalStatus.COMPLETE, "verified_answer"),
-            TerminalNode(NodeId("defer"), TerminalStatus.DEFERRED, "verification_unknown"),
-            TerminalNode(NodeId("failed"), TerminalStatus.FAILED, "repair_failed"),
+            TerminalNode(
+                NodeId("complete-draft"), TerminalStatus.COMPLETE, "verified_answer",
+                InputBinding("answer", NodeId("draft"), ArtifactRole.CANDIDATE_ANSWER),
+            ),
+            TerminalNode(
+                NodeId("complete"), TerminalStatus.COMPLETE, "repaired_answer",
+                InputBinding("answer", NodeId("repair"), ArtifactRole.CANDIDATE_ANSWER),
+            ),
+            TerminalNode(NodeId("defer"), TerminalStatus.DEFERRED, "verification_unknown", None),
+            TerminalNode(NodeId("failed"), TerminalStatus.FAILED, "repair_failed", None),
         )
     )
 
@@ -129,6 +152,9 @@ class OptionContractTests(unittest.TestCase):
         wire = definition.to_json()
         json.dumps(wire)
         self.assertEqual(definition, OptionDefinition.from_json(wire))
+        self.assertEqual("1", wire["schemaVersion"])
+        self.assertEqual("candidate_answer", wire["nodes"][0]["output"]["role"])
+        self.assertEqual("original_request", wire["nodes"][0]["inputBindings"][0]["role"])
         self.assertEqual("10", wire["nodes"][0]["liabilityBoundNanos"])
 
     def test_limits_reject_bool_zero_attempts_and_negative_tokens(self):
@@ -155,6 +181,8 @@ class OptionContractTests(unittest.TestCase):
                     Branch(BranchOutcome.SUCCESS, NodeId("a")),
                     Branch(BranchOutcome.SUCCESS, NodeId("b")),
                 ),
+                (),
+                None,
             )
 
 
@@ -181,6 +209,8 @@ class GraphValidationTests(unittest.TestCase):
             draft.limits,
             draft.operation_version,
             tuple(branch for branch in draft.branches if branch.outcome is not BranchOutcome.UNKNOWN),
+            draft.input_bindings,
+            draft.output,
         )
         with self.assertRaisesRegex(GraphValidationError, "missing outcomes"):
             validate_option(option((incomplete, *definition.nodes[1:])))
@@ -199,7 +229,7 @@ class GraphValidationTests(unittest.TestCase):
         definition = valid_option()
         with self.assertRaisesRegex(GraphValidationError, "duplicate node ID"):
             validate_option(option((*definition.nodes, definition.nodes[-1])))
-        unreachable = TerminalNode(NodeId("orphan"), TerminalStatus.FAILED, "orphan")
+        unreachable = TerminalNode(NodeId("orphan"), TerminalStatus.FAILED, "orphan", None)
         with self.assertRaisesRegex(GraphValidationError, "unreachable nodes"):
             validate_option(option((*definition.nodes, unreachable)))
 
@@ -229,13 +259,16 @@ class GraphValidationTests(unittest.TestCase):
             liability=MAX_NANODOLLARS,
             max_attempts=2,
         )
-        complete = TerminalNode(NodeId("complete"), TerminalStatus.COMPLETE, "done")
+        complete = TerminalNode(
+            NodeId("complete"), TerminalStatus.COMPLETE, "done",
+            InputBinding("answer", NodeId("draft"), ArtifactRole.CANDIDATE_ANSWER),
+        )
         definition = option((huge, complete), max_transitions=1, max_attempts=2)
         with self.assertRaisesRegex(GraphValidationError, "overflows"):
             validate_option(definition)
 
     def test_terminal_only_option_has_zero_liability(self):
-        terminal = TerminalNode(NodeId("draft"), TerminalStatus.DEFERRED, "not_applicable")
+        terminal = TerminalNode(NodeId("draft"), TerminalStatus.DEFERRED, "not_applicable", None)
         validated = validate_option(option((terminal,), max_transitions=0, max_attempts=0))
         self.assertEqual(Nanodollars(0), validated.max_path_liability)
         self.assertEqual(0, validated.max_path_attempts)

@@ -9,6 +9,7 @@ from typing import Mapping, Protocol
 from uuid import uuid4
 
 from iceberg_router.contracts.adapters import (
+    ArtifactReference,
     OperationAdapter,
     OperationContext,
     OperationResult,
@@ -26,6 +27,7 @@ from iceberg_router.contracts.identifiers import (
     ReservationId,
 )
 from iceberg_router.contracts.options import (
+    ArtifactRole,
     BranchOutcome,
     OperationKind,
     OperationNode,
@@ -40,6 +42,33 @@ from .ledger import AdmissionDenied, BudgetContractBreach
 
 class ExecutorConfigurationError(ValueError):
     """The executor cannot safely run the supplied option."""
+
+
+class ArtifactResolutionError(RuntimeError):
+    """A declared input or terminal artifact is unavailable or incompatible."""
+
+
+class ArtifactStore(Protocol):
+    def put(self, artifact: ArtifactReference, value: object) -> None: ...
+    def get(self, reference: str) -> object: ...
+
+
+class InMemoryArtifactStore:
+    """Execution-local protected artifact storage used by the offline runtime."""
+
+    def __init__(self) -> None:
+        self._values: dict[str, object] = {}
+
+    def put(self, artifact: ArtifactReference, value: object) -> None:
+        if artifact.reference in self._values:
+            raise ArtifactResolutionError("artifact reference already exists")
+        self._values[artifact.reference] = value
+
+    def get(self, reference: str) -> object:
+        try:
+            return self._values[reference]
+        except KeyError as error:
+            raise ArtifactResolutionError("artifact is unavailable") from error
 
 
 class IdentityFactory(Protocol):
@@ -100,6 +129,7 @@ class ExecutionResult:
     output_reference: str | None
     attempts: tuple[AttemptExecution, ...]
     trace: tuple[TraceEvent, ...]
+    artifacts: tuple[ArtifactReference, ...] = ()
 
 
 class OptionExecutor:
@@ -138,6 +168,17 @@ class OptionExecutor:
 
         trace: list[TraceEvent] = []
         attempts: list[AttemptExecution] = []
+        store = InMemoryArtifactStore()
+        original = ArtifactReference(
+            self.identity_factory.new_id("artifact"),
+            ArtifactRole.ORIGINAL_REQUEST,
+            "request-v1",
+            None,
+        )
+        store.put(original, request.payload)
+        artifacts: dict[tuple[NodeId | None, ArtifactRole], ArtifactReference] = {
+            (None, ArtifactRole.ORIGINAL_REQUEST): original
+        }
         sequence = 0
 
         def emit(
@@ -179,6 +220,7 @@ class OptionExecutor:
                 None,
                 tuple(attempts),
                 tuple(trace),
+                tuple(artifacts.values()),
             )
 
         current_id = definition.entry_node_id
@@ -196,12 +238,16 @@ class OptionExecutor:
                     node.status,
                     node.result_code,
                     node.node_id,
-                    self._latest_output(attempts),
+                    self._terminal_output(node, artifacts),
                     tuple(attempts),
                     tuple(trace),
+                    tuple(artifacts.values()),
                 )
             emit(TraceEventKind.NODE_STARTED, node.node_id, node.kind.value)
-            outcome, breach = self._execute_node(request, node, attempts, emit)
+            inputs = self._resolve_inputs(node, artifacts)
+            outcome, breach = self._execute_node(
+                request, node, inputs, attempts, artifacts, store, emit
+            )
             if breach:
                 return ExecutionResult(
                     TerminalStatus.FAILED,
@@ -210,6 +256,7 @@ class OptionExecutor:
                     self._latest_output(attempts),
                     tuple(attempts),
                     tuple(trace),
+                    tuple(artifacts.values()),
                 )
             target = next(branch.target for branch in node.branches if branch.outcome is outcome)
             emit(TraceEventKind.BRANCH_SELECTED, node.node_id, outcome.value)
@@ -222,7 +269,10 @@ class OptionExecutor:
         self,
         request: ExecutionRequest,
         node: OperationNode,
+        inputs: Mapping[str, ArtifactReference],
         attempts: list[AttemptExecution],
+        artifacts: dict[tuple[NodeId | None, ArtifactRole], ArtifactReference],
+        store: ArtifactStore,
         emit,
     ) -> tuple[BranchOutcome, bool]:
         definition = request.option.definition
@@ -269,7 +319,7 @@ class OptionExecutor:
                 attempt_id=attempt_id,
                 authorization_id=authorization_id,
                 reservation_id=reservation_id,
-                payload=request.payload,
+                inputs=inputs,
             )
             try:
                 result = adapter.execute(context)
@@ -308,6 +358,20 @@ class OptionExecutor:
                 result,
             )
             attempts.append(attempt)
+            if result.output_reference is not None and node.output is not None:
+                artifact = ArtifactReference(
+                    result.output_reference,
+                    node.output.role,
+                    node.output.version,
+                    node.node_id.value,
+                )
+                key = (node.node_id, node.output.role)
+                existing = artifacts.get(key)
+                if existing is not None and existing != artifact:
+                    raise ArtifactResolutionError("node produced conflicting artifact references")
+                if existing is None:
+                    artifacts[key] = artifact
+                    store.put(artifact, None)
             try:
                 if result.usage_state is UsageState.KNOWN:
                     assert result.actual_cost is not None
@@ -352,3 +416,34 @@ class OptionExecutor:
             ),
             None,
         )
+
+    @staticmethod
+    def _resolve_inputs(
+        node: OperationNode,
+        artifacts: Mapping[tuple[NodeId | None, ArtifactRole], ArtifactReference],
+    ) -> Mapping[str, ArtifactReference]:
+        resolved: dict[str, ArtifactReference] = {}
+        for binding in node.input_bindings:
+            artifact = artifacts.get((binding.source_node_id, binding.role))
+            if artifact is None:
+                raise ArtifactResolutionError(
+                    f"missing {binding.role.value} for input {binding.input_name}"
+                )
+            if artifact.role is not binding.role:
+                raise ArtifactResolutionError("artifact role is incompatible with binding")
+            resolved[binding.input_name] = artifact
+        return MappingProxyType(resolved)
+
+    @staticmethod
+    def _terminal_output(
+        node: TerminalNode,
+        artifacts: Mapping[tuple[NodeId | None, ArtifactRole], ArtifactReference],
+    ) -> str | None:
+        if node.answer_binding is None:
+            return None
+        artifact = artifacts.get(
+            (node.answer_binding.source_node_id, node.answer_binding.role)
+        )
+        if artifact is None:
+            raise ArtifactResolutionError("terminal answer artifact is unavailable")
+        return artifact.reference

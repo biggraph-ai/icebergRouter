@@ -34,6 +34,9 @@ snapshots with a journal-sequence high-water mark for leakage-safe replay.
 PR 1 financial hardening preserves known invoices across invalid semantic outcomes,
 records over-bound bills before halting, and blocks new attempt authorization on
 preexisting holds after halt. Unknown usage remains pending.
+PR 2 adds schema-versioned data-flow options: adapters consume typed protected
+artifact references, graph validation checks producer roles and dominance, and
+terminals explicitly bind the candidate answer instead of returning the last output.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 

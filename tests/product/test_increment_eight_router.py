@@ -13,6 +13,8 @@ from iceberg_router.contracts import (  # noqa: E402
     AccountId,
     ApplicabilityRule,
     ApplicabilityVersion,
+    ArtifactDeclaration,
+    ArtifactRole,
     BoundVersion,
     Branch,
     BranchOutcome,
@@ -22,6 +24,7 @@ from iceberg_router.contracts import (  # noqa: E402
     DecisionId,
     EstimateState,
     EstimatorVersion,
+    InputBinding,
     Nanodollars,
     NodeId,
     OperationKind,
@@ -75,6 +78,8 @@ def validated_option(option_id: str = "small"):
             Branch(BranchOutcome.UNKNOWN, terminal),
             Branch(BranchOutcome.UNFUNDED, terminal),
         ),
+        (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
+        ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
     )
     return validate_option(
         OptionDefinition(
@@ -86,7 +91,17 @@ def validated_option(option_id: str = "small"):
             BoundVersion("bound-v1"),
             1,
             1,
-            (operation, TerminalNode(terminal, TerminalStatus.COMPLETE, "complete")),
+            (
+                operation,
+                TerminalNode(
+                    terminal,
+                    TerminalStatus.COMPLETE,
+                    "complete",
+                    InputBinding(
+                        "answer", operation.node_id, ArtifactRole.CANDIDATE_ANSWER
+                    ),
+                ),
+            ),
         )
     )
 

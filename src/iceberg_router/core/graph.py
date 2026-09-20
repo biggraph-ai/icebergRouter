@@ -50,6 +50,7 @@ _REQUIRED_OUTCOMES = {
         {
             BranchOutcome.SUCCESS,
             BranchOutcome.ERROR,
+            BranchOutcome.UNKNOWN,
             BranchOutcome.INAPPLICABLE,
             BranchOutcome.UNFUNDED,
         }
@@ -112,6 +113,33 @@ def validate_option(definition: OptionDefinition) -> ValidatedOption:
                     f"node {node.node_id.value} targets missing node {branch.target.value}"
                 )
 
+    predecessors: dict[NodeId, set[NodeId]] = {node_id: set() for node_id in nodes}
+    for node in definition.nodes:
+        if isinstance(node, OperationNode):
+            for branch in node.branches:
+                predecessors[branch.target].add(node.node_id)
+
+    dominators: dict[NodeId, set[NodeId]] = {
+        node_id: ({node_id} if node_id == definition.entry_node_id else set(nodes))
+        for node_id in nodes
+    }
+    changed = True
+    while changed:
+        changed = False
+        for node_id in nodes:
+            if node_id == definition.entry_node_id:
+                continue
+            incoming = predecessors[node_id]
+            common = (
+                set.intersection(*(dominators[parent] for parent in incoming))
+                if incoming
+                else set()
+            )
+            updated = {node_id} | common
+            if updated != dominators[node_id]:
+                dominators[node_id] = updated
+                changed = True
+
     visiting: set[NodeId] = set()
     visited: set[NodeId] = set()
     memo: dict[NodeId, _PathBound] = {}
@@ -153,6 +181,33 @@ def validate_option(definition: OptionDefinition) -> ValidatedOption:
     unreachable = sorted(node_id.value for node_id in set(nodes) - visited)
     if unreachable:
         raise GraphValidationError(f"unreachable nodes: {unreachable}")
+    for node in definition.nodes:
+        bindings = (
+            node.input_bindings
+            if isinstance(node, OperationNode)
+            else (() if node.answer_binding is None else (node.answer_binding,))
+        )
+        for binding in bindings:
+            source_id = binding.source_node_id
+            if source_id is None:
+                continue
+            source = nodes.get(source_id)
+            if source is None:
+                raise GraphValidationError(
+                    f"node {node.node_id.value} binds missing artifact source {source_id.value}"
+                )
+            if not isinstance(source, OperationNode) or source.output is None:
+                raise GraphValidationError(
+                    f"node {node.node_id.value} binds source without declared output"
+                )
+            if source.output.role is not binding.role:
+                raise GraphValidationError(
+                    f"node {node.node_id.value} binds incompatible artifact role"
+                )
+            if source_id not in dominators[node.node_id]:
+                raise GraphValidationError(
+                    f"artifact source {source_id.value} does not dominate node {node.node_id.value}"
+                )
     if maximum.transitions > definition.max_transitions:
         raise GraphValidationError(
             f"worst path needs {maximum.transitions} transitions, exceeding "

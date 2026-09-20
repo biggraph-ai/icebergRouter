@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from types import MappingProxyType
+from typing import Mapping, Protocol, runtime_checkable
 
+from ._validation import require_exact_keys, require_mapping, require_text
 from .events import UsageState
 from .identifiers import (
     AttemptId,
@@ -14,7 +16,68 @@ from .identifiers import (
     ReservationId,
 )
 from .money import Nanodollars
-from .options import BranchOutcome, OperationNode
+from .options import ArtifactRole, BranchOutcome, OperationNode
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactReference:
+    """Protected reference to a versioned artifact; it never contains artifact data."""
+
+    reference: str
+    role: ArtifactRole
+    version: str
+    producer_node_id: str | None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reference, str) or not self.reference:
+            raise ValueError("reference must be a non-empty string")
+        if not isinstance(self.role, ArtifactRole):
+            raise TypeError("role must be ArtifactRole")
+        if not isinstance(self.version, str) or not self.version:
+            raise ValueError("version must be a non-empty string")
+        if self.producer_node_id is not None and (
+            not isinstance(self.producer_node_id, str) or not self.producer_node_id
+        ):
+            raise ValueError("producer_node_id must be a non-empty string or None")
+
+    def to_json(self) -> dict[str, str | None]:
+        return {
+            "schemaVersion": "1",
+            "reference": self.reference,
+            "role": self.role.value,
+            "artifactVersion": self.version,
+            "producerNodeId": self.producer_node_id,
+        }
+
+    @classmethod
+    def from_json(cls, value: object) -> ArtifactReference:
+        obj = require_mapping(value, "artifact reference")
+        require_exact_keys(
+            obj,
+            "artifact reference",
+            {
+                "schemaVersion",
+                "reference",
+                "role",
+                "artifactVersion",
+                "producerNodeId",
+            },
+        )
+        if obj["schemaVersion"] != "1":
+            raise ValueError("unsupported artifact reference schemaVersion")
+        try:
+            role = ArtifactRole(obj["role"])
+        except (TypeError, ValueError) as error:
+            raise ValueError("artifact reference role is invalid") from error
+        producer = obj["producerNodeId"]
+        return cls(
+            require_text(obj["reference"], "reference", maximum=1024),
+            role,
+            require_text(obj["artifactVersion"], "artifactVersion", maximum=128),
+            None
+            if producer is None
+            else require_text(producer, "producerNodeId", maximum=128),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +91,7 @@ class OperationContext:
     attempt_id: AttemptId
     authorization_id: AuthorizationId
     reservation_id: ReservationId
-    payload: object
+    inputs: Mapping[str, ArtifactReference]
 
     def __post_init__(self) -> None:
         for value, expected, field in (
@@ -45,6 +108,14 @@ class OperationContext:
             raise TypeError("attempt_number must be an integer")
         if self.attempt_number < 1:
             raise ValueError("attempt_number must be positive")
+        if not isinstance(self.inputs, Mapping):
+            raise TypeError("inputs must be a mapping")
+        copied = dict(self.inputs)
+        if any(not isinstance(name, str) or not name for name in copied):
+            raise ValueError("input names must be non-empty strings")
+        if any(not isinstance(value, ArtifactReference) for value in copied.values()):
+            raise TypeError("inputs must contain ArtifactReference values")
+        object.__setattr__(self, "inputs", MappingProxyType(copied))
 
 
 @dataclass(frozen=True, slots=True)

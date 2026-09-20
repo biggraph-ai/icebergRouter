@@ -5,7 +5,7 @@ Date: 19 September 2026.
 Required product command executed:
 `PYTHONPATH=src python -m unittest discover -s tests/product -t . -v`
 
-Result: 112 product tests ran successfully: 111 passed and one documented expected
+Result: 117 product tests ran successfully: 116 passed and one documented expected
 failure records the PR 3 public identical-retry contract. The two former PR 1
 financial-truth expected failures are now ordinary passing regressions. Expected
 failures are owner-tagged requirements, not accepted behavior.
@@ -33,6 +33,14 @@ Focused PR 1 command executed:
 `PYTHONPATH=src python -m unittest tests.product.test_known_regressions tests.product.test_increment_two_budget tests.product.test_increment_four_executor -v`
 
 Result: all 23 financial-truth, ledger, and executor tests passed.
+
+Focused PR 2 command executed:
+`PYTHONPATH=src python -m unittest tests.product.test_pr_two_workflows tests.product.test_increment_three_graph tests.product.test_increment_four_executor -v`
+
+Result: all 22 workflow, graph, and executor tests passed. The workflow fixtures
+cover draft/check/repair reference binding, explicit repaired-answer selection,
+pre-authorization artifact failures, and typed timeout/exception deferral with
+unknown usage retained as outstanding liability.
 
 No claim of supported behavior for every provider or operating system is made. The
 product CI matrix declares Python 3.10–3.13; that hosted matrix was added but was

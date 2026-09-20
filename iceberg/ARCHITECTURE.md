@@ -129,3 +129,11 @@ is recorded before the budget halts, and halt prevents new authorization even on
 older hold while allowing exact issued-record replay and reconciliation. The hard
 budget promise remains conditional on upstream liability respecting its authorized
 bound; post-breach accounting cannot reverse an external charge.
+
+PR 2 replaces the executor's shared per-node payload with versioned artifact flow.
+Options declare typed input bindings, output roles, and explicit terminal candidate
+bindings. Validation proves that a bound producer exists, has a compatible role,
+and dominates its consumer before execution. At runtime adapters receive protected
+references rather than artifact contents; missing outputs stop the workflow before
+the next authorization. Complete terminals can select only candidate-answer
+artifacts, so checker evidence cannot accidentally become the served answer.

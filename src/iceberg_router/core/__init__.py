@@ -1,6 +1,8 @@
 """Governed runtime internals."""
 
 from .executor import (
+    ArtifactResolutionError,
+    ArtifactStore,
     AttemptExecution,
     ExecutionRequest,
     ExecutionResult,
@@ -48,6 +50,8 @@ from .router import (
 __all__ = (
     "AdmissionDenied",
     "AdmissionRequest",
+    "ArtifactResolutionError",
+    "ArtifactStore",
     "AttemptExecution",
     "AuthorizationRecord",
     "AuthorizedAttempt",

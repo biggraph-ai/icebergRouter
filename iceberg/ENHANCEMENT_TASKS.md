@@ -158,30 +158,30 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Define versioned artifact roles at minimum for original request, candidate
+- [x] Define versioned artifact roles at minimum for original request, candidate
       answer, retrieved evidence, checker evidence, and diagnostic output.
-- [ ] Add typed node input bindings and declared output roles to option contracts.
-- [ ] Introduce an execution-state/artifact-store interface with protected references;
+- [x] Add typed node input bindings and declared output roles to option contracts.
+- [x] Introduce an execution-state/artifact-store interface with protected references;
       do not place sensitive artifact contents in traces.
-- [ ] Resolve every binding and validate role compatibility before authorization or
+- [x] Resolve every binding and validate role compatibility before authorization or
       adapter invocation.
-- [ ] Bind draft candidate → checker, then draft candidate + checker evidence → repair.
-- [ ] Add an explicit terminal answer binding and prevent checker evidence from
+- [x] Bind draft candidate → checker, then draft candidate + checker evidence → repair.
+- [x] Add an explicit terminal answer binding and prevent checker evidence from
       becoming the answer merely because it was emitted last.
-- [ ] Permit deferred workflows to retain diagnostic references without labeling
+- [x] Permit deferred workflows to retain diagnostic references without labeling
       them successful or verified.
-- [ ] Define exception outcomes per operation kind and require the corresponding
+- [x] Define exception outcomes per operation kind and require the corresponding
       branch during graph validation.
-- [ ] Validate missing artifacts, incompatible roles, cycles, and unauthorized
+- [x] Validate missing artifacts, incompatible roles, cycles, and unauthorized
       resource bindings before the next side effect.
-- [ ] Version the wire format and add strict round-trip tests for bindings/artifacts.
+- [x] Version the wire format and add strict round-trip tests for bindings/artifacts.
 
 **Acceptance regressions**
 
-- [ ] Draft/check/repair asserts exact predecessor references received by each adapter.
-- [ ] The terminal answer is the repaired candidate, never the checker report.
-- [ ] Missing or incompatible artifacts fail before another authorization.
-- [ ] Tool timeout and tool exception terminate through typed branches without
+- [x] Draft/check/repair asserts exact predecessor references received by each adapter.
+- [x] The terminal answer is the repaired candidate, never the checker report.
+- [x] Missing or incompatible artifacts fail before another authorization.
+- [x] Tool timeout and tool exception terminate through typed branches without
       `StopIteration`; known/unknown usage treatment remains financially correct.
 
 ---

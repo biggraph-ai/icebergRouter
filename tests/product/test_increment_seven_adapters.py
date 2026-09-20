@@ -9,11 +9,15 @@ sys.path.insert(0, str(BASE / "src"))
 from iceberg_router.adapters import SingleAttemptAdapter  # noqa: E402
 from iceberg_router.contracts import (  # noqa: E402
     AccountId,
+    ArtifactDeclaration,
+    ArtifactReference,
+    ArtifactRole,
     AttemptId,
     AuthorizationId,
     Branch,
     BranchOutcome,
     DecisionId,
+    InputBinding,
     Nanodollars,
     NodeId,
     OperationAdapter,
@@ -37,6 +41,8 @@ def node(kind: OperationKind = OperationKind.MODEL_CALL) -> OperationNode:
         OperationLimits(1, 1_000, 100, 100),
         "operation-v1",
         (Branch(BranchOutcome.SUCCESS, NodeId("complete")),),
+        (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
+        ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
     )
 
 
@@ -49,7 +55,11 @@ def context(kind: OperationKind = OperationKind.MODEL_CALL) -> OperationContext:
         AttemptId("attempt-1"),
         AuthorizationId("authorization-1"),
         ReservationId("reservation-1"),
-        {"prompt": "offline fixture"},
+        {
+            "request": ArtifactReference(
+                "artifact-request", ArtifactRole.ORIGINAL_REQUEST, "request-v1", None
+            )
+        },
     )
 
 
@@ -66,6 +76,14 @@ class RecordingTransport:
 
 
 class AdapterContractTests(unittest.TestCase):
+    def test_artifact_reference_has_strict_versioned_wire_format(self):
+        reference = context().inputs["request"]
+        wire = reference.to_json()
+        self.assertEqual(wire["schemaVersion"], "1")
+        self.assertEqual(ArtifactReference.from_json(wire), reference)
+        with self.assertRaises(ValueError):
+            ArtifactReference.from_json({**wire, "schemaVersion": "2"})
+
     def test_context_requires_authorized_attempt_identity(self):
         valid = context()
         self.assertEqual(valid.attempt_number, 1)
@@ -78,7 +96,7 @@ class AdapterContractTests(unittest.TestCase):
                 valid.attempt_id,
                 valid.authorization_id,
                 valid.reservation_id,
-                valid.payload,
+                valid.inputs,
             )
         with self.assertRaises(TypeError):
             OperationContext(
@@ -89,7 +107,7 @@ class AdapterContractTests(unittest.TestCase):
                 valid.attempt_id,
                 valid.authorization_id,
                 valid.reservation_id,
-                valid.payload,
+                valid.inputs,
             )
 
     def test_result_keeps_unknown_usage_distinct_from_zero(self):

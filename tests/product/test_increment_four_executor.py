@@ -11,12 +11,15 @@ from iceberg_router.contracts import (  # noqa: E402
     AccountId,
     ApplicabilityRule,
     ApplicabilityVersion,
+    ArtifactDeclaration,
+    ArtifactRole,
     BoundVersion,
     Branch,
     BranchOutcome,
     BudgetId,
     DecisionId,
     EstimatorVersion,
+    InputBinding,
     Nanodollars,
     NodeId,
     OperationKind,
@@ -64,6 +67,7 @@ def model_node(
     unfunded: str,
     attempts: int = 1,
     liability: int = 10,
+    inputs: tuple[InputBinding, ...] | None = None,
 ) -> OperationNode:
     return OperationNode(
         NodeId(name),
@@ -78,6 +82,10 @@ def model_node(
             branch(BranchOutcome.UNKNOWN, unknown),
             branch(BranchOutcome.UNFUNDED, unfunded),
         ),
+        inputs
+        if inputs is not None
+        else (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
+        ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
     )
 
 
@@ -108,9 +116,14 @@ def single_model_option(*, attempts: int = 1, liability: int = 10):
                     attempts=attempts,
                     liability=liability,
                 ),
-                TerminalNode(NodeId("complete"), TerminalStatus.COMPLETE, "answer_ready"),
-                TerminalNode(NodeId("defer"), TerminalStatus.DEFERRED, "usage_unknown"),
-                TerminalNode(NodeId("failed"), TerminalStatus.FAILED, "provider_error"),
+                TerminalNode(
+                    NodeId("complete"),
+                    TerminalStatus.COMPLETE,
+                    "answer_ready",
+                    InputBinding("answer", NodeId("start"), ArtifactRole.CANDIDATE_ANSWER),
+                ),
+                TerminalNode(NodeId("defer"), TerminalStatus.DEFERRED, "usage_unknown", None),
+                TerminalNode(NodeId("failed"), TerminalStatus.FAILED, "provider_error", None),
             ),
             transitions=1,
             attempts=attempts,
@@ -127,12 +140,14 @@ def repair_option():
         limits(),
         "checker-v1",
         (
-            branch(BranchOutcome.PASS, "complete"),
+            branch(BranchOutcome.PASS, "complete-draft"),
             branch(BranchOutcome.FAIL, "repair"),
             branch(BranchOutcome.UNKNOWN, "defer"),
             branch(BranchOutcome.ERROR, "defer"),
             branch(BranchOutcome.UNFUNDED, "defer"),
         ),
+        (InputBinding("candidate", NodeId("start"), ArtifactRole.CANDIDATE_ANSWER),),
+        ArtifactDeclaration(ArtifactRole.CHECKER_EVIDENCE, "checker-v1"),
     )
     return validate_option(
         definition(
@@ -153,10 +168,21 @@ def repair_option():
                     unknown="defer",
                     unfunded="defer",
                     liability=20,
+                    inputs=(
+                        InputBinding("candidate", NodeId("start"), ArtifactRole.CANDIDATE_ANSWER),
+                        InputBinding("checker", NodeId("verify"), ArtifactRole.CHECKER_EVIDENCE),
+                    ),
                 ),
-                TerminalNode(NodeId("complete"), TerminalStatus.COMPLETE, "verified"),
-                TerminalNode(NodeId("defer"), TerminalStatus.DEFERRED, "unfunded_or_unknown"),
-                TerminalNode(NodeId("failed"), TerminalStatus.FAILED, "operation_failed"),
+                TerminalNode(
+                    NodeId("complete-draft"), TerminalStatus.COMPLETE, "verified",
+                    InputBinding("answer", NodeId("start"), ArtifactRole.CANDIDATE_ANSWER),
+                ),
+                TerminalNode(
+                    NodeId("complete"), TerminalStatus.COMPLETE, "repaired",
+                    InputBinding("answer", NodeId("repair"), ArtifactRole.CANDIDATE_ANSWER),
+                ),
+                TerminalNode(NodeId("defer"), TerminalStatus.DEFERRED, "unfunded_or_unknown", None),
+                TerminalNode(NodeId("failed"), TerminalStatus.FAILED, "operation_failed", None),
             ),
             transitions=3,
             attempts=3,
@@ -252,8 +278,8 @@ class ExecutionTests(ExecutorTestCase):
         self.assertEqual(Nanodollars(10), snapshot.outstanding_liability)
 
     def test_unfunded_repair_follows_explicit_defer_branch(self):
-        model = ScriptedAdapter([known(BranchOutcome.SUCCESS, 10)])
-        verifier = ScriptedAdapter([known(BranchOutcome.FAIL, 3)])
+        model = ScriptedAdapter([known(BranchOutcome.SUCCESS, 10, "draft-output")])
+        verifier = ScriptedAdapter([known(BranchOutcome.FAIL, 3, "checker-output")])
         executor = self.make_executor(
             {OperationKind.MODEL_CALL: model, OperationKind.VERIFY: verifier}, budget=15
         )

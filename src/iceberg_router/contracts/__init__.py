@@ -1,6 +1,6 @@
 """Portable value and event contracts implemented in Increment 1."""
 
-from .adapters import OperationAdapter, OperationContext, OperationResult
+from .adapters import ArtifactReference, OperationAdapter, OperationContext, OperationResult
 from .decisions import (
     CandidateDecision,
     CostEstimate,
@@ -36,11 +36,14 @@ from .identifiers import (
 from .money import MAX_NANODOLLARS, ZERO_NANODOLLARS, Nanodollars, checked_sum
 from .options import (
     ApplicabilityRule,
+    ArtifactDeclaration,
+    ArtifactRole,
     Branch,
     BranchOutcome,
     OperationKind,
     OperationLimits,
     OperationNode,
+    InputBinding,
     OptionDefinition,
     TerminalNode,
     TerminalStatus,
@@ -51,6 +54,9 @@ __all__ = (
     "AccountId",
     "ApplicabilityRule",
     "ApplicabilityVersion",
+    "ArtifactDeclaration",
+    "ArtifactReference",
+    "ArtifactRole",
     "AttemptId",
     "AuthorizationId",
     "BudgetId",
@@ -68,6 +74,7 @@ __all__ = (
     "EventId",
     "FeedbackEvent",
     "Identifier",
+    "InputBinding",
     "MAX_NANODOLLARS",
     "Nanodollars",
     "NodeId",
