@@ -38,9 +38,8 @@ from tests.product.test_increment_eight_router import (  # noqa: E402
 
 
 class RouteRetryContractTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_identical_completed_retry_returns_recorded_result_without_second_call(self):
-        """Owned by enhancement PR 3; current behavior raises JournalConflict."""
+        """Identical public retries return the durable completion."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             ledger = SQLiteBudgetLedger(root / "ledger.sqlite3")

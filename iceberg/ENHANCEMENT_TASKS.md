@@ -202,34 +202,34 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Adopt and document the recommended retry contract: identical request identity
+- [x] Adopt and document the recommended retry contract: identical request identity
       plus identical canonical content returns completed state or explicit
       in-progress/unknown state; conflicting content fails before spending.
-- [ ] Define a canonical request/option/config fingerprint that excludes secrets but
+- [x] Define a canonical request/option/config fingerprint that excludes secrets but
       includes every behavior-affecting version and limit.
-- [ ] Add an atomic execution claim with one owner under concurrent submissions.
-- [ ] Persist authorized-not-dispatched, dispatched-unknown, completed, reconciled,
+- [x] Add an atomic execution claim with one owner under concurrent submissions.
+- [x] Persist authorized-not-dispatched, dispatched-unknown, completed, reconciled,
       and terminal-failed states.
-- [ ] Persist before/after transitions for authorization, dispatch, receipt, artifact,
+- [x] Persist before/after transitions for authorization, dispatch, receipt, artifact,
       branch, and terminal completion.
-- [ ] Include node, option/config hashes, attempt/reservation/authorization IDs,
+- [x] Include node, option/config hashes, attempt/reservation/authorization IDs,
       resource identity, provider receipt, usage state, and protected references.
-- [ ] Add a transactional ledger outbox for ledger-owned transitions; do not infer
+- [x] Add a transactional ledger outbox for ledger-owned transitions; do not infer
       atomicity from two successful independent writes.
-- [ ] On restart, retain uncertain liability and never blindly redispatch an
+- [x] On restart, retain uncertain liability and never blindly redispatch an
       operation that might have completed.
-- [ ] Add provider reconciliation/idempotency hooks without claiming exactly-once
+- [x] Add provider reconciliation/idempotency hooks without claiming exactly-once
       effects where the provider offers no such contract.
-- [ ] Deliberately update the identical-retry test from `JournalConflict` only when
+- [x] Deliberately update the identical-retry test from `JournalConflict` only when
       the new public contract is implemented; retain conflicting-payload rejection.
 
 **Acceptance regressions**
 
-- [ ] completed retry returns the cached/recorded completion with one physical call;
-- [ ] concurrent duplicate submissions have one execution owner;
-- [ ] exact decision replay causes one physical call total;
-- [ ] conflicting content fails before authorization;
-- [ ] crash after draft/before checker preserves the draft artifact and identifies
+- [x] completed retry returns the cached/recorded completion with one physical call;
+- [x] concurrent duplicate submissions have one execution owner;
+- [x] exact decision replay causes one physical call total;
+- [x] conflicting content fails before authorization;
+- [x] crash after draft/before checker preserves the draft artifact and identifies
       unresolved checker liability without redispatching blindly.
 
 ---

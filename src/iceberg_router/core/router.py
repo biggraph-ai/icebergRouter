@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
+import hashlib
 from types import MappingProxyType
 from typing import Mapping
 
@@ -20,7 +22,8 @@ from .executor import (
     UtcClock,
 )
 from .graph import ValidatedOption
-from .journal import SQLiteAuditJournal
+from .execution_store import ExecutionClaimState, SQLiteExecutionStore
+from .journal import SQLiteAuditJournal, _canonical_payload
 
 
 class RoutingConfigurationError(ValueError):
@@ -75,10 +78,17 @@ class RouteRequest:
         object.__setattr__(self, "options", MappingProxyType(copied))
 
 
+class RouteState(str, Enum):
+    COMPLETED = "completed"
+    IN_PROGRESS = "in_progress"
+    UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True, slots=True)
 class RouteResult:
-    decision: DecisionRecord
+    decision: DecisionRecord | None
     execution: ExecutionResult | None
+    state: RouteState = RouteState.COMPLETED
 
 
 class IcebergRouter:
@@ -92,6 +102,7 @@ class IcebergRouter:
         *,
         identity_factory: IdentityFactory | None = None,
         clock: Clock | None = None,
+        execution_store: SQLiteExecutionStore | None = None,
     ):
         if not isinstance(policy, RoutingPolicy):
             raise TypeError("policy must implement RoutingPolicy")
@@ -104,39 +115,114 @@ class IcebergRouter:
         self.journal = journal
         self.identity_factory = identity_factory or RandomIdentityFactory()
         self.clock = clock or UtcClock()
+        self.execution_store = execution_store or SQLiteExecutionStore(
+            f"{journal.path}.executions.sqlite3"
+        )
 
     def route(self, request: RouteRequest) -> RouteResult:
         if not isinstance(request, RouteRequest):
             raise TypeError("request must be RouteRequest")
-        decision = self.policy.select(request.policy_request)
-        self._validate_decision(request.policy_request, decision)
-        decision_time = self.clock.now()
-        self.journal.append_decision(
-            EventId(self.identity_factory.new_id("event")),
-            decision_time,
-            decision,
-            f"decision:{decision.decision_id.value}",
-        )
-        if decision.selected_option_id is None:
-            return RouteResult(decision, None)
+        fingerprint = self._fingerprint(request)
+        request_id = request.policy_request.request_id
+        claim = self.execution_store.claim(request_id, fingerprint)
+        if claim.state is ExecutionClaimState.COMPLETED:
+            assert claim.result is not None
+            return RouteResult(claim.result[0], claim.result[1], RouteState.COMPLETED)
+        if claim.state is ExecutionClaimState.IN_PROGRESS:
+            return RouteResult(None, None, RouteState.IN_PROGRESS)
+        if claim.state is ExecutionClaimState.UNKNOWN:
+            return RouteResult(None, None, RouteState.UNKNOWN)
+        try:
+            decision = self.policy.select(request.policy_request)
+            self._validate_decision(request.policy_request, decision)
+            decision_time = self.clock.now()
+            self.journal.append_decision(
+                EventId(self.identity_factory.new_id("event")),
+                decision_time,
+                decision,
+                f"decision:{decision.decision_id.value}",
+            )
+            if decision.selected_option_id is None:
+                result = RouteResult(decision, None)
+                self.execution_store.append_transition(
+                    request_id,
+                    "terminal_completed",
+                    {"status": "deferred", "decisionId": decision.decision_id.value},
+                )
+                self.execution_store.complete(
+                    request_id, fingerprint, decision, None
+                )
+                return result
 
-        execution_request = ExecutionRequest(
-            request_id=decision.request_id,
-            decision_id=decision.decision_id,
-            budget_id=request.budget_id,
-            option=request.options[decision.selected_option_id],
-            applicable=True,
-            payload=request.payload,
-        )
-        execution = self.executor.execute(execution_request)
-        self.journal.record_execution(
-            EventId(self.identity_factory.new_id("event")),
-            self.clock.now(),
-            execution_request,
-            execution,
-            f"execution:{decision.decision_id.value}",
-        )
-        return RouteResult(decision, execution)
+            execution_request = ExecutionRequest(
+                request_id=decision.request_id,
+                decision_id=decision.decision_id,
+                budget_id=request.budget_id,
+                option=request.options[decision.selected_option_id],
+                applicable=True,
+                payload=request.payload,
+            )
+            execution = self.executor.execute(
+                execution_request, transition_sink=self.execution_store
+            )
+            self.journal.record_execution(
+                EventId(self.identity_factory.new_id("event")),
+                self.clock.now(),
+                execution_request,
+                execution,
+                f"execution:{decision.decision_id.value}",
+            )
+            self.execution_store.append_transition(
+                request_id,
+                "terminal_completed",
+                {
+                    "status": execution.status.value,
+                    "resultCode": execution.result_code,
+                    "outputReference": execution.output_reference,
+                },
+            )
+            self.execution_store.complete(
+                request_id, fingerprint, decision, execution
+            )
+            return RouteResult(decision, execution)
+        except BaseException:
+            self.execution_store.mark_unknown(request_id)
+            raise
+
+    def _fingerprint(self, request: RouteRequest) -> str:
+        policy = request.policy_request
+        policy_version = getattr(self.policy, "policy_version", None)
+        if policy_version is None or not hasattr(policy_version, "value"):
+            raise RoutingConfigurationError(
+                "durable routing requires an explicit policy_version"
+            )
+        material = {
+            "schemaVersion": "1",
+            "budgetId": request.budget_id.value,
+            "policyVersion": policy_version.value,
+            "policyRequest": {
+                "decisionId": policy.decision_id.value,
+                "requestId": policy.request_id.value,
+                "workloadId": policy.workload_id.value,
+                "snapshotVersion": policy.snapshot_version.value,
+                "candidates": [candidate.to_json() for candidate in policy.candidates],
+                "randomizationSeed": policy.randomization_seed,
+            },
+            "options": {
+                option_id.value: option.definition.to_json()
+                for option_id, option in sorted(
+                    request.options.items(), key=lambda item: item[0].value
+                )
+            },
+            "payload": request.payload,
+        }
+        try:
+            encoded = _canonical_payload(material).encode("utf-8")
+        except (TypeError, ValueError) as error:
+            raise RoutingConfigurationError(
+                "route payload must be canonical JSON for durable replay"
+            ) from error
+        return hashlib.sha256(encoded).hexdigest()
 
     @staticmethod
     def _validate_decision(request: PolicyRequest, decision: object) -> None:

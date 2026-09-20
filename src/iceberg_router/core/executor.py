@@ -53,6 +53,12 @@ class ArtifactStore(Protocol):
     def get(self, reference: str) -> object: ...
 
 
+class ExecutionTransitionSink(Protocol):
+    def append_transition(
+        self, request_id: RequestId, transition: str, payload: dict
+    ) -> None: ...
+
+
 class InMemoryArtifactStore:
     """Execution-local protected artifact storage used by the offline runtime."""
 
@@ -154,7 +160,12 @@ class OptionExecutor:
         self.identity_factory = identity_factory or RandomIdentityFactory()
         self.clock = clock or UtcClock()
 
-    def execute(self, request: ExecutionRequest) -> ExecutionResult:
+    def execute(
+        self,
+        request: ExecutionRequest,
+        *,
+        transition_sink: ExecutionTransitionSink | None = None,
+    ) -> ExecutionResult:
         if not isinstance(request, ExecutionRequest):
             raise TypeError("request must be ExecutionRequest")
         definition = request.option.definition
@@ -179,6 +190,12 @@ class OptionExecutor:
         artifacts: dict[tuple[NodeId | None, ArtifactRole], ArtifactReference] = {
             (None, ArtifactRole.ORIGINAL_REQUEST): original
         }
+        self._transition(
+            transition_sink,
+            request.request_id,
+            "artifact_stored",
+            {"role": original.role.value, "reference": original.reference},
+        )
         sequence = 0
 
         def emit(
@@ -246,7 +263,14 @@ class OptionExecutor:
             emit(TraceEventKind.NODE_STARTED, node.node_id, node.kind.value)
             inputs = self._resolve_inputs(node, artifacts)
             outcome, breach = self._execute_node(
-                request, node, inputs, attempts, artifacts, store, emit
+                request,
+                node,
+                inputs,
+                attempts,
+                artifacts,
+                store,
+                emit,
+                transition_sink,
             )
             if breach:
                 return ExecutionResult(
@@ -260,6 +284,12 @@ class OptionExecutor:
                 )
             target = next(branch.target for branch in node.branches if branch.outcome is outcome)
             emit(TraceEventKind.BRANCH_SELECTED, node.node_id, outcome.value)
+            self._transition(
+                transition_sink,
+                request.request_id,
+                "branch_selected",
+                {"nodeId": node.node_id.value, "outcome": outcome.value},
+            )
             transitions += 1
             if transitions > definition.max_transitions:
                 raise RuntimeError("validated option exceeded its transition bound")
@@ -274,6 +304,7 @@ class OptionExecutor:
         artifacts: dict[tuple[NodeId | None, ArtifactRole], ArtifactReference],
         store: ArtifactStore,
         emit,
+        transition_sink: ExecutionTransitionSink | None,
     ) -> tuple[BranchOutcome, bool]:
         definition = request.option.definition
         adapter = self.adapters[node.kind]
@@ -304,6 +335,19 @@ class OptionExecutor:
                 emit(TraceEventKind.ADMISSION_DENIED, node.node_id, "unfunded")
                 return BranchOutcome.UNFUNDED, False
 
+            self._transition(
+                transition_sink,
+                request.request_id,
+                "authorized_not_dispatched",
+                {
+                    "nodeId": node.node_id.value,
+                    "attemptId": attempt_id.value,
+                    "authorizationId": authorization_id.value,
+                    "reservationId": reservation_id.value,
+                    "operationVersion": node.operation_version,
+                },
+            )
+
             emit(
                 TraceEventKind.ATTEMPT_STARTED,
                 node.node_id,
@@ -320,6 +364,20 @@ class OptionExecutor:
                 authorization_id=authorization_id,
                 reservation_id=reservation_id,
                 inputs=inputs,
+            )
+            self._transition(
+                transition_sink,
+                request.request_id,
+                "dispatched_unknown",
+                {
+                    "nodeId": node.node_id.value,
+                    "attemptId": attempt_id.value,
+                    "authorizationId": authorization_id.value,
+                    "reservationId": reservation_id.value,
+                    "inputReferences": {
+                        name: artifact.reference for name, artifact in inputs.items()
+                    },
+                },
             )
             try:
                 result = adapter.execute(context)
@@ -358,6 +416,22 @@ class OptionExecutor:
                 result,
             )
             attempts.append(attempt)
+            self._transition(
+                transition_sink,
+                request.request_id,
+                "usage_received",
+                {
+                    "nodeId": node.node_id.value,
+                    "attemptId": attempt_id.value,
+                    "usageState": result.usage_state.value,
+                    "actualCostNanos": (
+                        None
+                        if result.actual_cost is None
+                        else result.actual_cost.to_json()
+                    ),
+                    "providerReceipt": result.provider_receipt,
+                },
+            )
             if result.output_reference is not None and node.output is not None:
                 artifact = ArtifactReference(
                     result.output_reference,
@@ -372,6 +446,17 @@ class OptionExecutor:
                 if existing is None:
                     artifacts[key] = artifact
                     store.put(artifact, None)
+                    self._transition(
+                        transition_sink,
+                        request.request_id,
+                        "artifact_stored",
+                        {
+                            "nodeId": node.node_id.value,
+                            "role": artifact.role.value,
+                            "reference": artifact.reference,
+                            "version": artifact.version,
+                        },
+                    )
             try:
                 if result.usage_state is UsageState.KNOWN:
                     assert result.actual_cost is not None
@@ -447,3 +532,13 @@ class OptionExecutor:
         if artifact is None:
             raise ArtifactResolutionError("terminal answer artifact is unavailable")
         return artifact.reference
+
+    @staticmethod
+    def _transition(
+        sink: ExecutionTransitionSink | None,
+        request_id: RequestId,
+        transition: str,
+        payload: dict,
+    ) -> None:
+        if sink is not None:
+            sink.append_transition(request_id, transition, payload)

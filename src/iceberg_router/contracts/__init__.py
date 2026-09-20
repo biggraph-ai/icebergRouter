@@ -1,6 +1,13 @@
 """Portable value and event contracts implemented in Increment 1."""
 
-from .adapters import ArtifactReference, OperationAdapter, OperationContext, OperationResult
+from .adapters import (
+    ArtifactReference,
+    OperationAdapter,
+    OperationContext,
+    OperationReconciler,
+    OperationResult,
+    ReconciliationRequest,
+)
 from .decisions import (
     CandidateDecision,
     CostEstimate,
@@ -88,11 +95,13 @@ __all__ = (
     "OperationAdapter",
     "OperationContext",
     "OperationResult",
+    "OperationReconciler",
     "OutputId",
     "PolicyVersion",
     "PolicyRequest",
     "Probability",
     "RequestId",
+    "ReconciliationRequest",
     "RoutingPolicy",
     "ReservationId",
     "Score",

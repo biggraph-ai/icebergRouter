@@ -23,10 +23,12 @@ from iceberg_router.contracts import (  # noqa: E402
     OperationAdapter,
     OperationContext,
     OperationKind,
+    OperationReconciler,
     OperationLimits,
     OperationNode,
     OperationResult,
     RequestId,
+    ReconciliationRequest,
     ReservationId,
     UsageState,
 )
@@ -76,6 +78,26 @@ class RecordingTransport:
 
 
 class AdapterContractTests(unittest.TestCase):
+    def test_optional_reconciler_does_not_dispatch_a_retry(self):
+        class Reconciler:
+            def __init__(self):
+                self.requests = []
+
+            def reconcile(self, request):
+                self.requests.append(request)
+                return None
+
+        reconciler = Reconciler()
+        request = ReconciliationRequest(
+            AttemptId("attempt-1"),
+            AuthorizationId("authorization-1"),
+            ReservationId("reservation-1"),
+            "receipt-1",
+        )
+        self.assertIsInstance(reconciler, OperationReconciler)
+        self.assertIsNone(reconciler.reconcile(request))
+        self.assertEqual(reconciler.requests, [request])
+
     def test_artifact_reference_has_strict_versioned_wire_format(self):
         reference = context().inputs["request"]
         wire = reference.to_json()

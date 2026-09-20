@@ -1,14 +1,13 @@
 # Validation record
 
-Date: 19 September 2026.
+Date: 20 September 2026.
 
 Required product command executed:
 `PYTHONPATH=src python -m unittest discover -s tests/product -t . -v`
 
-Result: 117 product tests ran successfully: 116 passed and one documented expected
-failure records the PR 3 public identical-retry contract. The two former PR 1
-financial-truth expected failures are now ordinary passing regressions. Expected
-failures are owner-tagged requirements, not accepted behavior.
+Result: all 123 product tests passed. The former PR 3 identical-retry expected
+failure is now a passing durable replay regression, and the former PR 1
+financial-truth expected failures remain ordinary passing regressions.
 They are separate from, and do not weaken, the passing current-behavior and
 append-only/conflicting-identity tests. The complete product suite produced the
 same result from a temporary clean product-only tree with no reference repositories.
@@ -41,6 +40,13 @@ Result: all 22 workflow, graph, and executor tests passed. The workflow fixtures
 cover draft/check/repair reference binding, explicit repaired-answer selection,
 pre-authorization artifact failures, and typed timeout/exception deferral with
 unknown usage retained as outstanding liability.
+
+Focused PR 3 command executed:
+`PYTHONPATH=src python -m unittest tests.product.test_pr_three_recovery tests.product.test_route_retry_contract tests.product.test_increment_eight_router -v`
+
+Result: all 13 ownership, replay, recovery, and router tests passed, including
+concurrent duplicate ownership, conflict-before-spend, restart replay, ledger
+outbox, and crash-with-uncertain-liability fixtures.
 
 No claim of supported behavior for every provider or operating system is made. The
 product CI matrix declares Python 3.10–3.13; that hosted matrix was added but was

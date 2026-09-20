@@ -13,6 +13,12 @@ from .executor import (
 )
 from .governor import AdmissionRequest, AuthorizedAttempt, BoundUnavailable, BudgetGovernor
 from .feedback_store import FeedbackSnapshot, FeedbackStoreError, JournalFeedbackStore
+from .execution_store import (
+    ExecutionClaim,
+    ExecutionClaimState,
+    ExecutionConflict,
+    SQLiteExecutionStore,
+)
 from .graph import GraphValidationError, ValidatedOption, validate_option
 from .journal import (
     GENESIS_HASH,
@@ -44,6 +50,7 @@ from .router import (
     PolicyContractError,
     RouteRequest,
     RouteResult,
+    RouteState,
     RoutingConfigurationError,
 )
 
@@ -63,6 +70,9 @@ __all__ = (
     "DuplicateConflict",
     "ExecutionRequest",
     "ExecutionResult",
+    "ExecutionClaim",
+    "ExecutionClaimState",
+    "ExecutionConflict",
     "ExecutorConfigurationError",
     "InvalidTransition",
     "IcebergRouter",
@@ -87,8 +97,10 @@ __all__ = (
     "ReservationState",
     "RouteRequest",
     "RouteResult",
+    "RouteState",
     "RoutingConfigurationError",
     "SQLiteBudgetLedger",
+    "SQLiteExecutionStore",
     "SQLiteAuditJournal",
     "SettlementResult",
     "ValidatedOption",

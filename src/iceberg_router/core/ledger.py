@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from enum import Enum
+import json
 from pathlib import Path
 import sqlite3
 from typing import Iterator
@@ -121,6 +122,13 @@ CREATE TABLE IF NOT EXISTS ledger_updates (
     update_kind TEXT NOT NULL CHECK(update_kind IN ('pending', 'settled', 'breached')),
     actual_cost_nanos INTEGER CHECK(actual_cost_nanos >= 0),
     PRIMARY KEY(budget_id, idempotency_key)
+);
+
+CREATE TABLE IF NOT EXISTS ledger_outbox (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_kind TEXT NOT NULL,
+    reservation_id TEXT NOT NULL,
+    payload_json TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS reservations_budget_state
@@ -312,6 +320,15 @@ class SQLiteBudgetLedger:
                 "SELECT * FROM authorizations WHERE authorization_id = ?",
                 (authorization_id.value,),
             ).fetchone()
+            self._append_outbox(
+                connection,
+                "authorization",
+                reservation_id,
+                {
+                    "authorizationId": authorization_id.value,
+                    "attemptId": attempt_id.value,
+                },
+            )
             return self._authorization_record(row)
 
     def reserve_and_authorize(
@@ -415,6 +432,15 @@ class SQLiteBudgetLedger:
                 "SELECT * FROM authorizations WHERE authorization_id = ?",
                 (authorization_id.value,),
             ).fetchone()
+            self._append_outbox(
+                connection,
+                "authorization",
+                reservation_id,
+                {
+                    "authorizationId": authorization_id.value,
+                    "attemptId": attempt_id.value,
+                },
+            )
             return self._record(reservation_row), self._authorization_record(authorization_row)
 
     def mark_pending(self, reservation_id: ReservationId, *, idempotency_key: str) -> SettlementResult:
@@ -442,6 +468,12 @@ class SQLiteBudgetLedger:
                 WHERE reservation_id = ?
                 """,
                 (idempotency_key, reservation_id.value),
+            )
+            self._append_outbox(
+                connection,
+                "pending",
+                reservation_id,
+                {"idempotencyKey": idempotency_key, "usageState": "unknown"},
             )
             return SettlementResult(
                 self._record(self._required_reservation_row(connection, reservation_id)), False
@@ -499,6 +531,16 @@ class SQLiteBudgetLedger:
                     "UPDATE budgets SET halted = 1 WHERE budget_id = ?",
                     (row["budget_id"],),
                 )
+            self._append_outbox(
+                connection,
+                "settlement",
+                reservation_id,
+                {
+                    "actualCostNanos": actual_cost.to_json(),
+                    "idempotencyKey": idempotency_key,
+                    "state": target_state.value,
+                },
+            )
             result = SettlementResult(
                 self._record(self._required_reservation_row(connection, reservation_id)), False
             )
@@ -512,6 +554,41 @@ class SQLiteBudgetLedger:
         self._require_type(reservation_id, ReservationId, "reservation_id")
         with closing(self._connect()) as connection:
             return self._record(self._required_reservation_row(connection, reservation_id))
+
+    def outbox_events(self) -> tuple[dict, ...]:
+        """Return ledger transitions committed atomically with their state changes."""
+
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT sequence, event_kind, reservation_id, payload_json "
+                "FROM ledger_outbox ORDER BY sequence"
+            ).fetchall()
+        return tuple(
+            {
+                "sequence": row["sequence"],
+                "eventKind": row["event_kind"],
+                "reservationId": row["reservation_id"],
+                "payload": json.loads(row["payload_json"]),
+            }
+            for row in rows
+        )
+
+    @staticmethod
+    def _append_outbox(
+        connection: sqlite3.Connection,
+        event_kind: str,
+        reservation_id: ReservationId,
+        payload: dict,
+    ) -> None:
+        connection.execute(
+            "INSERT INTO ledger_outbox(event_kind, reservation_id, payload_json) "
+            "VALUES (?, ?, ?)",
+            (
+                event_kind,
+                reservation_id.value,
+                json.dumps(payload, sort_keys=True, separators=(",", ":")),
+            ),
+        )
 
     def _snapshot(self, connection: sqlite3.Connection, budget_id: BudgetId) -> BudgetSnapshot:
         budget = connection.execute(

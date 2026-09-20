@@ -47,7 +47,6 @@ from iceberg_router.contracts import (  # noqa: E402
 from iceberg_router.core import (  # noqa: E402
     BudgetGovernor,
     IcebergRouter,
-    JournalConflict,
     PolicyContractError,
     RouteRequest,
     RoutingConfigurationError,
@@ -203,7 +202,7 @@ class RouterTestCase(unittest.TestCase):
         self.assertEqual(self.ledger.snapshot(self.budget_id).confirmed_spend, Nanodollars(0))
         self.assertEqual(len(self.journal.entries()), 1)
 
-    def test_duplicate_decision_fails_before_a_second_execution(self):
+    def test_duplicate_decision_returns_recorded_completion(self):
         option = validated_option()
         route_request = RouteRequest(
             policy_request(candidate()),
@@ -213,9 +212,9 @@ class RouterTestCase(unittest.TestCase):
         router = self.router(
             FixedPolicy(OptionId("small"), PolicyVersion("fixed-v1"))
         )
-        router.route(route_request)
-        with self.assertRaises(JournalConflict):
-            router.route(route_request)
+        first = router.route(route_request)
+        replay = router.route(route_request)
+        self.assertEqual(replay, first)
         self.assertEqual(
             self.ledger.snapshot(self.budget_id).confirmed_spend, Nanodollars(7)
         )
@@ -244,6 +243,8 @@ class RouterTestCase(unittest.TestCase):
         fixed = FixedPolicy(OptionId("small"), PolicyVersion("fixed-v1"))
 
         class CorruptingPolicy:
+            policy_version = fixed.policy_version
+
             def select(self, request):
                 decision = fixed.select(request)
                 return type(decision)(

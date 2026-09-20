@@ -154,3 +154,30 @@ class OperationAdapter(Protocol):
     """Structural interface consumed by the guarded executor."""
 
     def execute(self, context: OperationContext) -> OperationResult: ...
+
+@dataclass(frozen=True, slots=True)
+class ReconciliationRequest:
+    """Provider lookup for an already dispatched attempt; never authorizes a retry."""
+
+    attempt_id: AttemptId
+    authorization_id: AuthorizationId
+    reservation_id: ReservationId
+    provider_receipt: str | None = None
+
+    def __post_init__(self) -> None:
+        for value, expected, field in (
+            (self.attempt_id, AttemptId, "attempt_id"),
+            (self.authorization_id, AuthorizationId, "authorization_id"),
+            (self.reservation_id, ReservationId, "reservation_id"),
+        ):
+            if not isinstance(value, expected):
+                raise TypeError(f"{field} must be {expected.__name__}")
+        if self.provider_receipt is not None and not self.provider_receipt:
+            raise ValueError("provider_receipt must be non-empty or None")
+
+
+@runtime_checkable
+class OperationReconciler(Protocol):
+    """Optional provider lookup; returning None keeps liability unresolved."""
+
+    def reconcile(self, request: ReconciliationRequest) -> OperationResult | None: ...

@@ -137,3 +137,15 @@ and dominates its consumer before execution. At runtime adapters receive protect
 references rather than artifact contents; missing outputs stop the workflow before
 the next authorization. Complete terminals can select only candidate-answer
 artifacts, so checker evidence cannot accidentally become the served answer.
+
+PR 3 adds single-host durable request ownership. A SHA-256 fingerprint covers the
+canonical policy request, validated option definitions, budget identity, and request
+payload without persisting the payload itself in the claim table. The first caller
+atomically owns execution; identical concurrent callers receive `in_progress`,
+completed callers receive the recorded result, conflicting content fails before
+authorization, and a crash leaves `unknown` state that is never blindly redispatched.
+Execution transitions retain protected references and attempt identities. Ledger
+authorization and settlement transitions are written to a transactional outbox in
+the same SQLite transaction as their authoritative accounting mutation. Provider
+reconciliation is an optional lookup hook, not a claim of exactly-once external
+effects.

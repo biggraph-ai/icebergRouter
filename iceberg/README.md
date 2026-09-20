@@ -37,6 +37,9 @@ preexisting holds after halt. Unknown usage remains pending.
 PR 2 adds schema-versioned data-flow options: adapters consume typed protected
 artifact references, graph validation checks producer roles and dominance, and
 terminals explicitly bind the candidate answer instead of returning the last output.
+PR 3 adds durable request claims, recorded completion replay, explicit in-progress
+and unknown recovery states, attempt transition history, and a ledger-owned
+transactional outbox. Recovery does not redispatch uncertain external operations.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 
