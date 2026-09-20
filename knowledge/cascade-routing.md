@@ -1,46 +1,39 @@
 # Repository study note: cascade-routing
 
 Repository URL: https://github.com/eth-sri/cascade-routing.git
-Pinned SHA: NOT AVAILABLE (fetch blocked before `FETCH_HEAD`)
-Reviewed files/symbols/line ranges: NONE—source was not retrieved
-Paper or upstream documentation: workspace manifest/register only; upstream README NOT INSPECTED
-Code / dataset / checkpoint license status: Apache-2.0 is reported by the workspace; NOT VERIFIED at a pinned commit
+Pinned SHA: 02d02f10ab10c930604b82a506b76af337b2982c (enclosing snapshot; upstream SHA unknown)
+Reviewed files/symbols/line ranges: `src/selection/cascade_router.py:CascadeRouter` (6–290+); `baseline_cascader.py:BaselineCascader` (6–170+); `quality_computer.py` (9–175+); `cost_computer.py` (6–82); `lambda_strategy.py` (6–220+)
+Paper or upstream documentation: root README inspected; claims below use code unless labeled documented
+Code / dataset / checkpoint license status: see reuse/open questions
 
 ## Observed responsibility
 
-No implementation behavior was observed. The workspace describes a sequential
-baseline that can stop, call another model, and select a final answer.
+Sequentially chooses another model or stops, then selects an answer among models already represented in the response table. It compares predicted supermodel quality against lambda-weighted summed predicted cost.
 
 ## Call-chain trace
 
-UNVERIFIED. Inspect `cascade_router.py`, `baseline_cascader.py`, quality/cost
-computers, and lambda strategy to identify response availability, predicted
-quality/cost, stop/continue choice, answer selection, and exhausted-option behavior.
+question + partial `model_answers` (`None`=unrun) → quality/cost prediction → supermodel search → next model or stop → repeat → predicted-quality answer selection. `fit` tunes lambdas against `max_expected_cost` and mixes cheap/expensive tie solutions.
+
+## Inputs, outputs and state
+
+See `source-map.md` for the precise schemas and symbol evidence. Mutable model/config/cache state remains upstream-specific; Iceberg adapters must snapshot versions rather than expose live objects.
 
 ## Budget and feedback assumptions
 
-UNKNOWN. Determine whether cost is observed or predicted, whether optimization is
-expected-cost only, which counterfactual responses training requires, and how a
-missing response or failed call is represented. No strict budget guarantee is
-currently supported by evidence.
+Training/evaluation can accept full response tables plus quality/cost measures. That counterfactual visibility is not a live trace. Budget is expected average cost; random `gamma` mixing and float arithmetic do not establish a pathwise cap.
 
 ## Reuse decision
 
-Isolated sequential baseline behind Iceberg contracts. Preserve native decisions
-in traces and separately label common-guard blocks.
+Isolated table-driven reproduction. Preserve native policy and separately apply common guard. Apache-2.0 root text observed. Do not silently fix the apparent empty-answer double append at lines 242–243.
 
 ## Minimal test proposal
 
-Use a hand-written response table covering immediate stop, one continuation,
-missing response, and exhausted liability. Exercise only inspected pure selection
-methods in an isolated environment. No provider, dataset, secret, or paid call.
+In its own reviewed environment: pure selector characterization on a 2-query × 2-model synthetic response table for stop, continue, no-answer, and max-depth. Seed NumPy; no network/secrets; $0. Hand-check calls and table cost. This is simulation, not live cascade quality.
 
 ## Executed evidence
 
-Core source-only fetch FAILED with HTTPS CONNECT 403 on 2026-09-15. No upstream
-code ran.
+NOT RUN. On 2026-09-15 this pass only read source in the supplied Linux workspace. No dependencies were installed; no upstream script, model, dataset, checkpoint, service, network request, or paid call was executed.
 
 ## Open questions
 
-Exact SHA/symbols, notices, training information, stopping equality, answer chooser,
-retry paths, missing responses, accounting units, and enforceability of costs.
+Upstream SHA, dataset/model terms, units, exact tie behavior, possible `select_answer` defect, and training split visibility.
