@@ -1,4 +1,35 @@
-# Cost-bound specification (proposal)
+# Cost-bound specification
+
+Increment 2 implements the single-host SQLite reservation, authorization, pending,
+and settlement lifecycle in `src/iceberg_router/core`. The local invariant applies
+only to liabilities submitted to this authority under valid upper bounds. Provider
+bound validation and complete billable-action interception remain later adapter
+work.
+
+Increment 3 also computes a checked structural maximum over every legal acyclic
+option path, multiplying each operation's per-attempt liability by its maximum
+attempts. That calculation is an admission input, not evidence that a provider
+honors the declared per-attempt bounds.
+
+Increment 4 requests a separate reservation and authorization for every physical
+attempt, including retries. Known usage settles the corresponding hold; exceptions
+or unknown usage retain it as pending; an unfunded later branch defers explicitly;
+and a reported bound breach halts execution and further admission. Adapter timeout
+and cancellation enforcement remain provider-specific, unverified behavior.
+
+Increment 7 adds no provider pricing or timeout claim. Its wrapper performs one
+call into an injected transport, but cannot prove that the transport, SDK, or remote
+gateway performs only one billable attempt. Such hidden work remains outside the
+budget guarantee until separately reviewed and intercepted.
+
+PR 1 financial-truth hardening preserves known cost and provider receipt even when
+the semantic outcome is invalid for the graph. Known invoices settle before the
+normalized error/unknown branch is followed. An invoice above its authorization is
+recorded in full and halts creation of every new attempt authorization, including
+authorization against a hold created before the breach. Exact replay of an already
+issued authorization and settlement/reconciliation remain permitted while halted.
+This records the real liability after a violation; it cannot undo the external bill
+or turn an unenforceable upstream price into a hard pre-dispatch guarantee.
 
 ## Quantities
 
@@ -49,5 +80,9 @@ cap is insufficient when other charge components are unbounded or undocumented.
 
 Authorization and balance update require a transactional compare-and-write or an
 equivalent serializable single-writer protocol. Atomic file replacement alone does
-not prevent two readers from reserving the same funds. Crash recovery must rebuild
-confirmed and outstanding amounts from durable append-only events.
+not prevent two readers from reserving the same funds. Increment 2 persists current
+accounting records transactionally and reconstructs balances after restart.
+Increment 5 adds a separate immutable, hash-chained journal with restart and chain
+verification. It does not atomically commit with ledger transitions and does not
+reconstruct authoritative balances from journal events, so it must not be used to
+claim event-sourced accounting or crash-gap-free audit coverage.

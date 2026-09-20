@@ -4,6 +4,8 @@ Populate one short, source-linked note per repository, plus:
 - baseline-matrix.md: option pool, budget semantics, feedback access and costs.
 - assumption-register.md: observation versus estimate versus unverified assumption.
 - adapter-contract.md: agreed interfaces and portable data types.
+- `../iceberg/ENHANCEMENT_TASKS.md`: analyzed PR 0–8 implementation backlog and
+  acceptance conditions; tasks are proposals, not completed behavior.
 - cost-bound-spec.md: exact-money admission, reservation and settlement rules.
 - test-plan.md: smallest isolated reproductions and common contract fixtures.
 - blocked-items.md: missing provenance, artifacts, licenses or reproducibility details.
