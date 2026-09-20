@@ -12,6 +12,7 @@ from iceberg_router.contracts import (  # noqa: E402
     ArtifactDeclaration,
     ArtifactReference,
     ArtifactRole,
+    BoundedContractEvidence,
     AttemptId,
     AuthorizationId,
     Branch,
@@ -30,8 +31,12 @@ from iceberg_router.contracts import (  # noqa: E402
     RequestId,
     ReconciliationRequest,
     ReservationId,
+    ResourceIdentity,
     UsageState,
 )
+
+
+RESOURCE = ResourceIdentity("fixture", "model", "v1", "prompt-v1")
 
 
 def node(kind: OperationKind = OperationKind.MODEL_CALL) -> OperationNode:
@@ -45,6 +50,10 @@ def node(kind: OperationKind = OperationKind.MODEL_CALL) -> OperationNode:
         (Branch(BranchOutcome.SUCCESS, NodeId("complete")),),
         (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
         ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
+        RESOURCE,
+        BoundedContractEvidence(
+            "evidence-v1", "tariff-v1", "bound-v1", Nanodollars(100), True, True, True
+        ),
     )
 
 
@@ -158,7 +167,7 @@ class AdapterContractTests(unittest.TestCase):
         )
         transport = RecordingTransport(expected)
         adapter = SingleAttemptAdapter(
-            OperationKind.MODEL_CALL, "operation-v1", transport
+            OperationKind.MODEL_CALL, "operation-v1", RESOURCE, transport
         )
         operation_context = context()
         self.assertIsInstance(adapter, OperationAdapter)
@@ -170,13 +179,13 @@ class AdapterContractTests(unittest.TestCase):
             OperationResult(BranchOutcome.SUCCESS, UsageState.KNOWN, Nanodollars(1))
         )
         adapter = SingleAttemptAdapter(
-            OperationKind.VERIFY, "verify-adapter-v1", transport
+            OperationKind.VERIFY, "verify-adapter-v1", RESOURCE, transport
         )
         with self.assertRaises(ValueError):
             adapter.execute(context(OperationKind.MODEL_CALL))
         self.assertEqual(transport.calls, [])
         version_mismatch = SingleAttemptAdapter(
-            OperationKind.MODEL_CALL, "operation-v2", transport
+            OperationKind.MODEL_CALL, "operation-v2", RESOURCE, transport
         )
         with self.assertRaises(ValueError):
             version_mismatch.execute(context(OperationKind.MODEL_CALL))
@@ -184,7 +193,7 @@ class AdapterContractTests(unittest.TestCase):
 
     def test_bad_transport_result_is_not_coerced(self):
         adapter = SingleAttemptAdapter(
-            OperationKind.MODEL_CALL, "operation-v1", RecordingTransport({"cost": 0})
+            OperationKind.MODEL_CALL, "operation-v1", RESOURCE, RecordingTransport({"cost": 0})
         )
         with self.assertRaises(TypeError):
             adapter.execute(context())
@@ -192,7 +201,7 @@ class AdapterContractTests(unittest.TestCase):
     def test_transport_exception_propagates_without_adapter_retry(self):
         transport = RecordingTransport(TimeoutError("offline timeout"))
         adapter = SingleAttemptAdapter(
-            OperationKind.MODEL_CALL, "operation-v1", transport
+            OperationKind.MODEL_CALL, "operation-v1", RESOURCE, transport
         )
         with self.assertRaises(TimeoutError):
             adapter.execute(context())
@@ -200,9 +209,9 @@ class AdapterContractTests(unittest.TestCase):
 
     def test_adapter_configuration_is_strict(self):
         with self.assertRaises(ValueError):
-            SingleAttemptAdapter(OperationKind.MODEL_CALL, "", RecordingTransport(None))
+            SingleAttemptAdapter(OperationKind.MODEL_CALL, "", RESOURCE, RecordingTransport(None))
         with self.assertRaises(TypeError):
-            SingleAttemptAdapter(OperationKind.MODEL_CALL, "adapter-v1", object())
+            SingleAttemptAdapter(OperationKind.MODEL_CALL, "adapter-v1", RESOURCE, object())
 
 
 if __name__ == "__main__":

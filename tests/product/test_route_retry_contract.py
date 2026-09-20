@@ -31,6 +31,7 @@ from iceberg_router.core import (  # noqa: E402
 from iceberg_router.policies import FixedPolicy  # noqa: E402
 from iceberg_router.testing import DeterministicIdentityFactory, FixedClock  # noqa: E402
 from tests.product.test_increment_eight_router import (  # noqa: E402
+    MODEL_RESOURCE,
     candidate,
     policy_request,
     validated_option,
@@ -62,8 +63,11 @@ class RouteRetryContractTests(unittest.TestCase):
             executor = OptionExecutor(
                 BudgetGovernor(ledger),
                 {
-                    OperationKind.MODEL_CALL: SingleAttemptAdapter(
-                        OperationKind.MODEL_CALL, "operation-v1", transport
+                    MODEL_RESOURCE: SingleAttemptAdapter(
+                        OperationKind.MODEL_CALL,
+                        "operation-v1",
+                        MODEL_RESOURCE,
+                        transport,
                     )
                 },
                 identity_factory=identities,

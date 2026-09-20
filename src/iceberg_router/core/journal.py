@@ -364,6 +364,7 @@ class SQLiteAuditJournal:
             f"trace:{event.event_id.value}") for event in result.trace)
         summary: dict[str, Any] = {
             "attemptIds": [attempt.attempt_id.value for attempt in result.attempts],
+            "resourceIdentities": [attempt.resource.to_json() for attempt in result.attempts],
             "decisionId": request.decision_id.value,
             "outputReference": result.output_reference,
             "requestId": request.request_id.value,

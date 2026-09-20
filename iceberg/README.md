@@ -40,6 +40,10 @@ terminals explicitly bind the candidate answer instead of returning the last out
 PR 3 adds durable request claims, recorded completion replay, explicit in-progress
 and unknown recovery states, attempt transition history, and a ledger-owned
 transactional outbox. Recovery does not redispatch uncertain external operations.
+PR 4 adds frozen resource identities, reviewed bounded-contract evidence, exact
+tariff cap calculation, resource-keyed dispatch, and caller-visible deadlines.
+Remote timeout remains pending; the local process limiter is not a filesystem or
+network sandbox for adversarial tools.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 

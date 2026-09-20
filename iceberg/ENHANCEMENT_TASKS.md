@@ -248,30 +248,33 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Add immutable resource identity (provider/model/tool/prompt/checker revision) to
+- [x] Add immutable resource identity (provider/model/tool/prompt/checker revision) to
       option nodes, authorization evidence, and attempt records.
-- [ ] Add a versioned tariff/cap calculator using exact fixed-unit arithmetic.
-- [ ] Derive liability from enforced input, output, retry, tool, checker, rounding,
+- [x] Add a versioned tariff/cap calculator using exact fixed-unit arithmetic.
+- [x] Derive liability from enforced input, output, retry, tool, checker, rounding,
       and non-token charge limits; attach provenance to the bound.
-- [ ] Require reviewed bounded-contract evidence for strict-mode eligibility; a
+- [x] Require reviewed bounded-contract evidence for strict-mode eligibility; a
       `KNOWN` label alone is insufficient.
-- [ ] Disable provider/SDK retry and fallback or expose every underlying attempt to
+- [x] Disable provider/SDK retry and fallback or expose every underlying attempt to
       authorization and tracing.
-- [ ] Enforce a caller-visible deadline around dispatch and retain unresolved
+- [x] Enforce a caller-visible deadline around dispatch and retain unresolved
       liability after timeout/cancellation.
-- [ ] Document when local timeout cannot stop already dispatched remote work.
+- [x] Document when local timeout cannot stop already dispatched remote work.
 - [ ] Introduce a reviewed sandbox for untrusted local tools before claiming tool
       deadline/resource enforcement.
-- [ ] Authorize paid feature generation and checking before invocation and charge
+      The current POSIX child-process boundary enforces wall/CPU termination, but
+      does not isolate filesystem or network access and is therefore not accepted
+      as a sandbox for adversarial tools.
+- [x] Authorize paid feature generation and checking before invocation and charge
       their explicit accounts.
 
 **Acceptance regressions**
 
-- [ ] reviewed transport fixtures cover normal, retry, timeout, cancellation,
+- [x] reviewed transport fixtures cover normal, retry, timeout, cancellation,
       malformed response, delayed billing, and over-bound invoice;
-- [ ] a declared 1 ms operation completing near 70 ms is not reported timely;
-- [ ] timeout remains financially pending absent authoritative usage;
-- [ ] different resources of the same operation kind cannot be silently substituted.
+- [x] a declared 1 ms operation completing near 70 ms is not reported timely;
+- [x] timeout remains financially pending absent authoritative usage;
+- [x] different resources of the same operation kind cannot be silently substituted.
 
 ---
 

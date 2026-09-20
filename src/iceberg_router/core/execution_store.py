@@ -19,6 +19,7 @@ from iceberg_router.contracts.identifiers import (
 )
 from iceberg_router.contracts.money import Nanodollars
 from iceberg_router.contracts.options import BranchOutcome, TerminalStatus
+from iceberg_router.contracts.resources import ResourceIdentity
 
 from .executor import AttemptExecution, ExecutionResult
 
@@ -190,6 +191,7 @@ def _execution_to_json(result: ExecutionResult) -> dict:
                 "attemptId": item.attempt_id.value,
                 "authorizationId": item.authorization_id.value,
                 "reservationId": item.reservation_id.value,
+                "resource": item.resource.to_json(),
                 "result": {
                     "outcome": item.result.outcome.value,
                     "usageState": item.result.usage_state.value,
@@ -228,6 +230,7 @@ def _result_from_json(value: dict) -> tuple[DecisionRecord, ExecutionResult | No
         attempts.append(AttemptExecution(
             NodeId(item["nodeId"]), item["attemptNumber"], AttemptId(item["attemptId"]),
             AuthorizationId(item["authorizationId"]), ReservationId(item["reservationId"]),
+            ResourceIdentity.from_json(item["resource"]),
             OperationResult(
                 BranchOutcome(result["outcome"]), UsageState(result["usageState"]),
                 None if actual is None else Nanodollars.from_json(actual),

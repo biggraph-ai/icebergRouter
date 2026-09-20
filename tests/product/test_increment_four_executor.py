@@ -13,6 +13,7 @@ from iceberg_router.contracts import (  # noqa: E402
     ApplicabilityVersion,
     ArtifactDeclaration,
     ArtifactRole,
+    BoundedContractEvidence,
     BoundVersion,
     Branch,
     BranchOutcome,
@@ -29,6 +30,7 @@ from iceberg_router.contracts import (  # noqa: E402
     OptionId,
     OptionVersion,
     RequestId,
+    ResourceIdentity,
     TerminalNode,
     TerminalStatus,
     TraceEventKind,
@@ -52,6 +54,18 @@ from iceberg_router.testing import (  # noqa: E402
 
 def limits(attempts: int = 1) -> OperationLimits:
     return OperationLimits(attempts, 1_000, 100, 50)
+
+
+MODEL_RESOURCE = ResourceIdentity("fixture", "model", "v1", "prompt-v1")
+VERIFY_RESOURCE = ResourceIdentity(
+    "fixture", "checker", "v1", "prompt-v1", "checker-v1"
+)
+
+
+def evidence(bound: int) -> BoundedContractEvidence:
+    return BoundedContractEvidence(
+        "evidence-v1", "tariff-v1", "bound-v1", Nanodollars(bound), True, True, True
+    )
 
 
 def branch(outcome: BranchOutcome, target: str) -> Branch:
@@ -86,6 +100,8 @@ def model_node(
         if inputs is not None
         else (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
         ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
+        MODEL_RESOURCE,
+        evidence(liability),
     )
 
 
@@ -148,6 +164,8 @@ def repair_option():
         ),
         (InputBinding("candidate", NodeId("start"), ArtifactRole.CANDIDATE_ANSWER),),
         ArtifactDeclaration(ArtifactRole.CHECKER_EVIDENCE, "checker-v1"),
+        VERIFY_RESOURCE,
+        evidence(3),
     )
     return validate_option(
         definition(
@@ -227,7 +245,7 @@ class ExecutorTestCase(unittest.TestCase):
 class ExecutionTests(ExecutorTestCase):
     def test_success_authorizes_settles_and_records_trace(self):
         adapter = ScriptedAdapter([known(BranchOutcome.SUCCESS, 4, "output-1")])
-        executor = self.make_executor({OperationKind.MODEL_CALL: adapter})
+        executor = self.make_executor({MODEL_RESOURCE: adapter})
         result = executor.execute(self.request(single_model_option()))
 
         self.assertEqual(TerminalStatus.COMPLETE, result.status)
@@ -255,7 +273,7 @@ class ExecutionTests(ExecutorTestCase):
         adapter = ScriptedAdapter(
             [known(BranchOutcome.ERROR, 2), known(BranchOutcome.SUCCESS, 3, "output-2")]
         )
-        executor = self.make_executor({OperationKind.MODEL_CALL: adapter})
+        executor = self.make_executor({MODEL_RESOURCE: adapter})
         result = executor.execute(self.request(single_model_option(attempts=2)))
 
         self.assertEqual(TerminalStatus.COMPLETE, result.status)
@@ -267,7 +285,7 @@ class ExecutionTests(ExecutorTestCase):
 
     def test_exception_becomes_unknown_usage_and_retains_hold(self):
         adapter = ScriptedAdapter([TimeoutError("synthetic timeout")])
-        executor = self.make_executor({OperationKind.MODEL_CALL: adapter})
+        executor = self.make_executor({MODEL_RESOURCE: adapter})
         result = executor.execute(self.request(single_model_option(liability=10)))
 
         self.assertEqual(TerminalStatus.DEFERRED, result.status)
@@ -281,7 +299,7 @@ class ExecutionTests(ExecutorTestCase):
         model = ScriptedAdapter([known(BranchOutcome.SUCCESS, 10, "draft-output")])
         verifier = ScriptedAdapter([known(BranchOutcome.FAIL, 3, "checker-output")])
         executor = self.make_executor(
-            {OperationKind.MODEL_CALL: model, OperationKind.VERIFY: verifier}, budget=15
+            {MODEL_RESOURCE: model, VERIFY_RESOURCE: verifier}, budget=15
         )
         result = executor.execute(self.request(repair_option()))
 
@@ -294,7 +312,7 @@ class ExecutionTests(ExecutorTestCase):
 
     def test_bound_breach_fails_without_following_quality_branch(self):
         adapter = ScriptedAdapter([known(BranchOutcome.SUCCESS, 11)])
-        executor = self.make_executor({OperationKind.MODEL_CALL: adapter})
+        executor = self.make_executor({MODEL_RESOURCE: adapter})
         result = executor.execute(self.request(single_model_option(liability=10)))
 
         self.assertEqual(TerminalStatus.FAILED, result.status)
@@ -308,7 +326,7 @@ class ExecutionTests(ExecutorTestCase):
 
     def test_inapplicable_request_defers_without_authorization(self):
         adapter = ScriptedAdapter([known(BranchOutcome.SUCCESS, 1)])
-        executor = self.make_executor({OperationKind.MODEL_CALL: adapter})
+        executor = self.make_executor({MODEL_RESOURCE: adapter})
         result = executor.execute(self.request(single_model_option(), applicable=False))
         self.assertEqual(TerminalStatus.DEFERRED, result.status)
         self.assertEqual("inapplicable", result.result_code)

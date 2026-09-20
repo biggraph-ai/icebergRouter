@@ -56,6 +56,7 @@ from .options import (
     TerminalStatus,
 )
 from .routing import PolicyRequest, RoutingPolicy
+from .resources import BoundedContractEvidence, ResourceIdentity
 
 __all__ = (
     "AccountId",
@@ -68,6 +69,7 @@ __all__ = (
     "AuthorizationId",
     "BudgetId",
     "BoundVersion",
+    "BoundedContractEvidence",
     "Branch",
     "BranchOutcome",
     "CandidateDecision",
@@ -104,6 +106,7 @@ __all__ = (
     "ReconciliationRequest",
     "RoutingPolicy",
     "ReservationId",
+    "ResourceIdentity",
     "Score",
     "SnapshotVersion",
     "TraceEvent",

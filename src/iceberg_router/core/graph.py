@@ -100,6 +100,14 @@ def validate_option(definition: OptionDefinition) -> ValidatedOption:
         if isinstance(node, TerminalNode):
             continue
         actual_outcomes = frozenset(branch.outcome for branch in node.branches)
+        if not node.bounded_contract.strict_eligible:
+            raise GraphValidationError(
+                f"node {node.node_id.value} lacks reviewed bounded-contract evidence"
+            )
+        if node.bounded_contract.attempt_bound != node.liability_bound:
+            raise GraphValidationError(
+                f"node {node.node_id.value} liability differs from reviewed bound evidence"
+            )
         required_outcomes = _REQUIRED_OUTCOMES[node.kind]
         if actual_outcomes != required_outcomes:
             missing = sorted(outcome.value for outcome in required_outcomes - actual_outcomes)

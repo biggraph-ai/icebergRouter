@@ -13,6 +13,7 @@ from iceberg_router.contracts import (  # noqa: E402
     ApplicabilityVersion,
     ArtifactDeclaration,
     ArtifactRole,
+    BoundedContractEvidence,
     BoundVersion,
     Branch,
     BranchOutcome,
@@ -27,6 +28,7 @@ from iceberg_router.contracts import (  # noqa: E402
     OptionDefinition,
     OptionId,
     OptionVersion,
+    ResourceIdentity,
     TerminalNode,
     TerminalStatus,
 )
@@ -39,6 +41,16 @@ def limits(max_attempts: int = 1) -> OperationLimits:
         timeout_ms=1_000,
         max_input_tokens=100,
         max_output_tokens=50,
+    )
+
+
+def resource(kind: OperationKind) -> ResourceIdentity:
+    return ResourceIdentity("fixture", kind.value, "v1", "prompt-v1")
+
+
+def evidence(bound: int) -> BoundedContractEvidence:
+    return BoundedContractEvidence(
+        "evidence-v1", "tariff-v1", "bound-v1", Nanodollars(bound), True, True, True
     )
 
 
@@ -73,6 +85,8 @@ def model_node(
         if inputs is not None
         else (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
         output=ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
+        resource=resource(OperationKind.MODEL_CALL),
+        bounded_contract=evidence(liability),
     )
 
 
@@ -114,6 +128,8 @@ def valid_option() -> OptionDefinition:
             InputBinding("candidate", NodeId("draft"), ArtifactRole.CANDIDATE_ANSWER),
         ),
         output=ArtifactDeclaration(ArtifactRole.CHECKER_EVIDENCE, "checker-v1"),
+        resource=resource(OperationKind.VERIFY),
+        bounded_contract=evidence(3),
     )
     repair = model_node(
         "repair",
@@ -183,6 +199,8 @@ class OptionContractTests(unittest.TestCase):
                 ),
                 (),
                 None,
+                resource(OperationKind.MODEL_CALL),
+                evidence(1),
             )
 
 
@@ -211,6 +229,8 @@ class GraphValidationTests(unittest.TestCase):
             tuple(branch for branch in draft.branches if branch.outcome is not BranchOutcome.UNKNOWN),
             draft.input_bindings,
             draft.output,
+            draft.resource,
+            draft.bounded_contract,
         )
         with self.assertRaisesRegex(GraphValidationError, "missing outcomes"):
             validate_option(option((incomplete, *definition.nodes[1:])))

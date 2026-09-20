@@ -45,6 +45,7 @@ from .ledger import (
     SQLiteBudgetLedger,
     SettlementResult,
 )
+from .pricing import Tariff, calculate_attempt_bound
 from .router import (
     IcebergRouter,
     PolicyContractError,
@@ -103,6 +104,8 @@ __all__ = (
     "SQLiteExecutionStore",
     "SQLiteAuditJournal",
     "SettlementResult",
+    "Tariff",
     "ValidatedOption",
     "validate_option",
+    "calculate_attempt_bound",
 )

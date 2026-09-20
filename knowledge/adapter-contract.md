@@ -17,6 +17,13 @@ authorization and invoke an adapter. Executable options must match the candidate
 snapshot, and eligible-option liability cannot understate the statically validated
 graph bound.
 
+PR 4 freezes dispatch to a resource identity containing provider, resource,
+resource revision, prompt revision, and optional checker revision. The reviewed
+single-attempt boundary validates that identity and bounded-contract evidence before
+calling its injected transport exactly once. It enforces a caller-visible wait
+deadline, but expiration cannot prove already-dispatched upstream work stopped;
+usage therefore remains unknown and financially pending until reconciliation.
+
 ## Portable scalar rules
 
 - Identifiers, policy versions, model/provider versions, and timestamps are

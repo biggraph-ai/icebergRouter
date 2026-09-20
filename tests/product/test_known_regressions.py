@@ -40,6 +40,7 @@ from iceberg_router.testing import (  # noqa: E402
 )
 from tests.product.test_increment_four_executor import (  # noqa: E402
     ExecutionRequest,
+    MODEL_RESOURCE,
     OperationKind,
     single_model_option,
 )
@@ -65,7 +66,7 @@ class FinancialTruthRegressions(unittest.TestCase):
             )
             executor = OptionExecutor(
                 BudgetGovernor(ledger),
-                {OperationKind.MODEL_CALL: adapter},
+                {MODEL_RESOURCE: adapter},
                 identity_factory=DeterministicIdentityFactory(),
                 clock=FixedClock("2026-09-19T12:00:00Z"),
             )

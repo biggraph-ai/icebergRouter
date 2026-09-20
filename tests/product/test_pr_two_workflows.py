@@ -10,10 +10,10 @@ sys.path.insert(0, str(BASE / "src"))
 
 from iceberg_router.contracts import (  # noqa: E402
     AccountId, ApplicabilityRule, ApplicabilityVersion, ArtifactDeclaration,
-    ArtifactRole, BoundVersion, Branch, BranchOutcome, BudgetId, DecisionId,
+    ArtifactRole, BoundedContractEvidence, BoundVersion, Branch, BranchOutcome, BudgetId, DecisionId,
     EstimatorVersion, InputBinding, Nanodollars, NodeId, OperationKind,
     OperationLimits, OperationNode, OperationResult, OptionDefinition, OptionId,
-    OptionVersion, RequestId, TerminalNode, TerminalStatus, UsageState,
+    OptionVersion, RequestId, ResourceIdentity, TerminalNode, TerminalStatus, UsageState,
 )
 from iceberg_router.core import (  # noqa: E402
     ArtifactResolutionError, BudgetGovernor, ExecutionRequest, GraphValidationError,
@@ -46,11 +46,19 @@ def branches(kind: OperationKind, success: str, failure: str) -> tuple[Branch, .
 
 
 def operation(name, kind, success, failure, inputs, role) -> OperationNode:
+    resource = ResourceIdentity(
+        "fixture", kind.value, "v1", "prompt-v1",
+        "checker-v1" if kind is OperationKind.VERIFY else None,
+    )
     return OperationNode(
         NodeId(name), kind, AccountId("workflow"), Nanodollars(5),
         OperationLimits(1, 1000, 100, 50), f"{name}-v1",
         branches(kind, success, failure), inputs,
         ArtifactDeclaration(role, f"{role.value}-v1"),
+        resource,
+        BoundedContractEvidence(
+            "evidence-v1", "tariff-v1", "bound-v1", Nanodollars(5), True, True, True
+        ),
     )
 
 
@@ -119,7 +127,10 @@ class WorkflowTests(unittest.TestCase):
         ))
         result, _, _ = self.execute(
             workflow_option(),
-            {OperationKind.MODEL_CALL: model, OperationKind.VERIFY: checker},
+            {
+                workflow_option().definition.nodes[0].resource: model,
+                workflow_option().definition.nodes[1].resource: checker,
+            },
         )
         self.assertEqual(model.calls[0].inputs["request"].role, ArtifactRole.ORIGINAL_REQUEST)
         self.assertEqual(checker.calls[0].inputs["candidate"].reference, "draft-ref")
@@ -136,7 +147,10 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(ArtifactResolutionError):
             self.execute(
                 workflow_option(),
-                {OperationKind.MODEL_CALL: model, OperationKind.VERIFY: checker},
+                {
+                    workflow_option().definition.nodes[0].resource: model,
+                    workflow_option().definition.nodes[1].resource: checker,
+                },
             )
         self.assertEqual(checker.calls, [])
 
@@ -160,7 +174,7 @@ class WorkflowTests(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 adapter = ScriptedAdapter((error,))
                 result, ledger, budget = self.execute(
-                    option, {OperationKind.DETERMINISTIC_TOOL: adapter}
+            option, {tool.resource: adapter}
                 )
                 self.assertEqual(result.status, TerminalStatus.DEFERRED)
                 self.assertEqual(result.attempts[0].result.outcome, BranchOutcome.UNKNOWN)
@@ -178,6 +192,8 @@ class WorkflowTests(unittest.TestCase):
             check.limits, check.operation_version, check.branches,
             (InputBinding("candidate", NodeId("draft"), ArtifactRole.CHECKER_EVIDENCE),),
             check.output,
+            check.resource,
+            check.bounded_contract,
         )
         with self.assertRaisesRegex(GraphValidationError, "incompatible artifact role"):
             validate_option(OptionDefinition(

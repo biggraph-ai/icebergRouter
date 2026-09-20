@@ -15,6 +15,7 @@ from iceberg_router.contracts import (  # noqa: E402
     ApplicabilityVersion,
     ArtifactDeclaration,
     ArtifactRole,
+    BoundedContractEvidence,
     BoundVersion,
     Branch,
     BranchOutcome,
@@ -38,6 +39,7 @@ from iceberg_router.contracts import (  # noqa: E402
     PolicyVersion,
     Probability,
     RequestId,
+    ResourceIdentity,
     SnapshotVersion,
     TerminalNode,
     TerminalStatus,
@@ -60,6 +62,7 @@ from iceberg_router.testing import DeterministicIdentityFactory, FixedClock  # n
 
 
 NOW = "2026-09-16T12:00:00Z"
+MODEL_RESOURCE = ResourceIdentity("fixture", "small-model", "v1", "prompt-v1")
 
 
 def validated_option(option_id: str = "small"):
@@ -79,6 +82,10 @@ def validated_option(option_id: str = "small"):
         ),
         (InputBinding("request", None, ArtifactRole.ORIGINAL_REQUEST),),
         ArtifactDeclaration(ArtifactRole.CANDIDATE_ANSWER, "candidate-v1"),
+        MODEL_RESOURCE,
+        BoundedContractEvidence(
+            "evidence-v1", "tariff-v1", "bound-v1", Nanodollars(10), True, True, True
+        ),
     )
     return validate_option(
         OptionDefinition(
@@ -145,11 +152,11 @@ class RouterTestCase(unittest.TestCase):
             "receipt-1",
         )
         adapter = SingleAttemptAdapter(
-            OperationKind.MODEL_CALL, "operation-v1", transport
+            OperationKind.MODEL_CALL, "operation-v1", MODEL_RESOURCE, transport
         )
         self.executor = OptionExecutor(
             BudgetGovernor(self.ledger),
-            {OperationKind.MODEL_CALL: adapter},
+            {MODEL_RESOURCE: adapter},
             identity_factory=self.identities,
             clock=self.clock,
         )

@@ -34,6 +34,7 @@ from iceberg_router.contracts.options import (
     TerminalNode,
     TerminalStatus,
 )
+from iceberg_router.contracts.resources import ResourceIdentity
 
 from .governor import AdmissionRequest, BoundUnavailable, BudgetGovernor
 from .graph import ValidatedOption
@@ -124,6 +125,7 @@ class AttemptExecution:
     attempt_id: AttemptId
     authorization_id: AuthorizationId
     reservation_id: ReservationId
+    resource: ResourceIdentity
     result: OperationResult
 
 
@@ -144,7 +146,7 @@ class OptionExecutor:
     def __init__(
         self,
         governor: BudgetGovernor,
-        adapters: Mapping[OperationKind, OperationAdapter],
+        adapters: Mapping[ResourceIdentity, OperationAdapter],
         *,
         identity_factory: IdentityFactory | None = None,
         clock: Clock | None = None,
@@ -153,8 +155,8 @@ class OptionExecutor:
             raise TypeError("governor must be BudgetGovernor")
         if not isinstance(adapters, Mapping):
             raise TypeError("adapters must be a mapping")
-        if any(not isinstance(kind, OperationKind) for kind in adapters):
-            raise TypeError("adapter keys must be OperationKind values")
+        if any(not isinstance(resource, ResourceIdentity) for resource in adapters):
+            raise TypeError("adapter keys must be ResourceIdentity values")
         self.governor = governor
         self.adapters = MappingProxyType(dict(adapters))
         self.identity_factory = identity_factory or RandomIdentityFactory()
@@ -171,9 +173,11 @@ class OptionExecutor:
         definition = request.option.definition
         nodes = {node.node_id: node for node in definition.nodes}
         required_adapters = {
-            node.kind for node in definition.nodes if isinstance(node, OperationNode)
+            node.resource for node in definition.nodes if isinstance(node, OperationNode)
         }
-        missing = sorted(kind.value for kind in required_adapters - self.adapters.keys())
+        missing = sorted(
+            resource.key for resource in required_adapters - self.adapters.keys()
+        )
         if missing:
             raise ExecutorConfigurationError(f"missing adapters for operation kinds: {missing}")
 
@@ -307,7 +311,7 @@ class OptionExecutor:
         transition_sink: ExecutionTransitionSink | None,
     ) -> tuple[BranchOutcome, bool]:
         definition = request.option.definition
-        adapter = self.adapters[node.kind]
+        adapter = self.adapters[node.resource]
         last_outcome = BranchOutcome.ERROR
         for attempt_number in range(1, node.limits.max_attempts + 1):
             attempt_id = AttemptId(self.identity_factory.new_id("attempt"))
@@ -345,6 +349,7 @@ class OptionExecutor:
                     "authorizationId": authorization_id.value,
                     "reservationId": reservation_id.value,
                     "operationVersion": node.operation_version,
+                    "resourceIdentity": node.resource.key,
                 },
             )
 
@@ -413,6 +418,7 @@ class OptionExecutor:
                 attempt_id,
                 authorization_id,
                 reservation_id,
+                node.resource,
                 result,
             )
             attempts.append(attempt)

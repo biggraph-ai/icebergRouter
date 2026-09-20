@@ -17,6 +17,7 @@ from .identifiers import (
     OptionVersion,
 )
 from .money import Nanodollars
+from .resources import BoundedContractEvidence, ResourceIdentity
 
 
 class OperationKind(str, Enum):
@@ -222,6 +223,8 @@ class OperationNode:
     branches: tuple[Branch, ...]
     input_bindings: tuple[InputBinding, ...]
     output: ArtifactDeclaration | None
+    resource: ResourceIdentity
+    bounded_contract: BoundedContractEvidence
 
     def __post_init__(self) -> None:
         if not isinstance(self.node_id, NodeId):
@@ -251,6 +254,10 @@ class OperationNode:
             raise ValueError("input binding names must be unique within a node")
         if self.output is not None and not isinstance(self.output, ArtifactDeclaration):
             raise TypeError("output must be ArtifactDeclaration or None")
+        if not isinstance(self.resource, ResourceIdentity):
+            raise TypeError("resource must be ResourceIdentity")
+        if not isinstance(self.bounded_contract, BoundedContractEvidence):
+            raise TypeError("bounded_contract must be BoundedContractEvidence")
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -264,6 +271,8 @@ class OperationNode:
             "branches": [branch.to_json() for branch in self.branches],
             "inputBindings": [binding.to_json() for binding in self.input_bindings],
             "output": None if self.output is None else self.output.to_json(),
+            "resource": self.resource.to_json(),
+            "boundedContract": self.bounded_contract.to_json(),
         }
 
     @classmethod
@@ -283,6 +292,8 @@ class OperationNode:
                 "branches",
                 "inputBindings",
                 "output",
+                "resource",
+                "boundedContract",
             },
         )
         if obj["nodeType"] != "operation":
@@ -315,6 +326,8 @@ class OperationNode:
                 if obj["output"] is None
                 else ArtifactDeclaration.from_json(obj["output"])
             ),
+            resource=ResourceIdentity.from_json(obj["resource"]),
+            bounded_contract=BoundedContractEvidence.from_json(obj["boundedContract"]),
         )
 
 

@@ -149,3 +149,13 @@ authorization and settlement transitions are written to a transactional outbox i
 the same SQLite transaction as their authoritative accounting mutation. Provider
 reconciliation is an optional lookup hook, not a claim of exactly-once external
 effects.
+
+PR 4 freezes provider/model/tool plus prompt/checker revisions in each operation
+node and keys executor adapters by that complete identity. Strict graph validation
+requires reviewed evidence that limits are enforced and hidden retries are disabled.
+A versioned exact-money tariff calculator derives per-attempt caps from input/output
+token limits, request charges, non-token charges, and rounding. The reviewed
+single-attempt adapter enforces a caller-visible deadline; timeout keeps liability
+pending because cancelling the local wait cannot prove remote work stopped. The
+POSIX tool adapter can terminate a child process and enforce a CPU/wall bound, but
+it does not isolate filesystem or network access and is not an adversarial sandbox.
