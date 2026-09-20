@@ -159,3 +159,24 @@ single-attempt adapter enforces a caller-visible deadline; timeout keeps liabili
 pending because cancelling the local wait cannot prove remote work stopped. The
 POSIX tool adapter can terminate a child process and enforce a CPU/wall bound, but
 it does not isolate filesystem or network access and is not an adversarial sandbox.
+
+PR 5 makes control-policy randomization exact and explicitly named. Finite decimal
+probabilities are converted from their digit tuples to reduced integer weights
+without ambient decimal-context arithmetic; unsupported 256-bit denominators fail
+before sampling, and rejection is bounded. `DrawThenDeferMixturePolicy` preserves
+the original baseline while `FeasibleMixturePolicy` renormalizes over eligible
+options. Workload routing is named `WorkloadRulePolicy`; genuinely task-aware rules
+consume explicit versioned `TaskFeatures`. Policy requests also carry immutable
+option/model/prompt/checker configuration snapshots, so a configuration change is a
+new snapshot rather than an invisible mutation.
+
+PR 6 separates operational-checker, user, training-label, and blind-final feedback
+through channel-specific append/read APIs; only possession of the store-specific
+blind capability exposes final labels, and the learning view excludes them. An
+immutable workload manifest fixes request identities, split, task features, and
+configuration versions. Manifest reporting either synthesizes explicit `missing`
+rows or fails under strict completeness, preserving the original denominator.
+SQLite account subbudgets are enforced transactionally inside the parent workload
+budget, so adaptation can stop while serving funds remain. Evaluation discloses
+blind-scoring and training cost separately, rejects duplicate final utility, and
+does not accept independent single-call matrices as executed conditional traces.

@@ -7,7 +7,7 @@ import hashlib
 import json
 
 from iceberg_router.contracts._validation import parse_utc_timestamp, require_utc_timestamp
-from iceberg_router.contracts.feedback import FeedbackEvent
+from iceberg_router.contracts.feedback import FeedbackChannel, FeedbackEvent
 from iceberg_router.contracts.identifiers import OutputId, RequestId, SnapshotVersion
 
 from .journal import (
@@ -44,17 +44,94 @@ class FeedbackSnapshot:
             raise TypeError("events must contain FeedbackEvent values")
         if len({event.event_id for event in self.events}) != len(self.events):
             raise ValueError("feedback event IDs must be unique")
-        if any(parse_utc_timestamp(event.visible_at, "visible_at") > cutoff for event in self.events):
+        if any(
+            parse_utc_timestamp(event.visible_at, "visible_at") > cutoff
+            for event in self.events
+        ):
             raise ValueError("snapshot contains feedback that was not yet visible")
+
+
+class BlindEvaluationCapability:
+    """Opaque capability required to construct a blind-evaluation view."""
+
+
+@dataclass(frozen=True, slots=True)
+class FeedbackChannelView:
+    store: "JournalFeedbackStore"
+    channels: frozenset[FeedbackChannel]
+
+    def snapshot(self, visible_through: str, **filters) -> FeedbackSnapshot:
+        return self.store._snapshot_channels(visible_through, self.channels, **filters)
 
 
 class JournalFeedbackStore:
     """Append feedback and create deterministic as-of visibility snapshots."""
 
-    def __init__(self, journal: SQLiteAuditJournal):
+    def __init__(
+        self,
+        journal: SQLiteAuditJournal,
+        *,
+        blind_capability: BlindEvaluationCapability | None = None,
+    ):
         if not isinstance(journal, SQLiteAuditJournal):
             raise TypeError("journal must be SQLiteAuditJournal")
         self.journal = journal
+        self._blind_capability = blind_capability
+
+    def learning_view(self) -> FeedbackChannelView:
+        return FeedbackChannelView(
+            self,
+            frozenset(
+                {
+                    FeedbackChannel.OPERATIONAL_CHECKER,
+                    FeedbackChannel.USER,
+                    FeedbackChannel.TRAINING_LABEL,
+                }
+            ),
+        )
+
+    def operational_checker_view(self) -> FeedbackChannelView:
+        return FeedbackChannelView(
+            self, frozenset({FeedbackChannel.OPERATIONAL_CHECKER})
+        )
+
+    def user_feedback_view(self) -> FeedbackChannelView:
+        return FeedbackChannelView(self, frozenset({FeedbackChannel.USER}))
+
+    def training_label_view(self) -> FeedbackChannelView:
+        return FeedbackChannelView(
+            self, frozenset({FeedbackChannel.TRAINING_LABEL})
+        )
+
+    def blind_evaluation_view(
+        self, capability: BlindEvaluationCapability
+    ) -> FeedbackChannelView:
+        if capability is not self._blind_capability:
+            raise PermissionError("blind-evaluation capability is required")
+        return FeedbackChannelView(
+            self, frozenset({FeedbackChannel.BLIND_EVALUATION})
+        )
+
+    def append_channel(self, event: FeedbackEvent, channel: FeedbackChannel):
+        if event.channel is not channel:
+            raise ValueError("feedback event channel does not match append API")
+        return self.append(event)
+
+    def append_operational_checker(self, event: FeedbackEvent):
+        return self.append_channel(event, FeedbackChannel.OPERATIONAL_CHECKER)
+
+    def append_user_feedback(self, event: FeedbackEvent):
+        return self.append_channel(event, FeedbackChannel.USER)
+
+    def append_training_label(self, event: FeedbackEvent):
+        return self.append_channel(event, FeedbackChannel.TRAINING_LABEL)
+
+    def append_blind_evaluation(
+        self, event: FeedbackEvent, capability: BlindEvaluationCapability
+    ):
+        if capability is not self._blind_capability:
+            raise PermissionError("blind-evaluation capability is required")
+        return self.append_channel(event, FeedbackChannel.BLIND_EVALUATION)
 
     def append(self, event: FeedbackEvent) -> JournalAppendResult:
         if not isinstance(event, FeedbackEvent):
@@ -64,6 +141,26 @@ class JournalFeedbackStore:
     def snapshot(
         self,
         visible_through: str,
+        **filters,
+    ) -> FeedbackSnapshot:
+        """Legacy/non-blind view; blind final labels are never returned."""
+        return self._snapshot_channels(
+            visible_through,
+            frozenset(
+                {
+                    FeedbackChannel.LEGACY_COMBINED,
+                    FeedbackChannel.OPERATIONAL_CHECKER,
+                    FeedbackChannel.USER,
+                    FeedbackChannel.TRAINING_LABEL,
+                }
+            ),
+            **filters,
+        )
+
+    def _snapshot_channels(
+        self,
+        visible_through: str,
+        channels: frozenset[FeedbackChannel],
         *,
         request_id: RequestId | None = None,
         output_id: OutputId | None = None,
@@ -105,6 +202,8 @@ class JournalFeedbackStore:
                 raise FeedbackStoreError(
                     f"feedback journal entry {entry.event_id.value} is invalid"
                 ) from error
+            if event.channel not in channels:
+                continue
             if parse_utc_timestamp(event.visible_at, "visible_at") > cutoff:
                 continue
             if request_id is not None and event.request_id != request_id:
@@ -121,6 +220,7 @@ class JournalFeedbackStore:
         )
         frozen = tuple(events)
         material = {
+            "channels": sorted(channel.value for channel in channels),
             "events": [event.to_json() for event in frozen],
             "journalThroughSequence": high_water,
             "outputId": None if output_id is None else output_id.value,

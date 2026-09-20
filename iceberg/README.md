@@ -44,6 +44,12 @@ PR 4 adds frozen resource identities, reviewed bounded-contract evidence, exact
 tariff cap calculation, resource-keyed dispatch, and caller-visible deadlines.
 Remote timeout remains pending; the local process limiter is not a filesystem or
 network sandbox for adversarial tools.
+PR 5 adds exact bounded mixture sampling, separately named draw-then-defer and
+feasible controls, explicit task-feature routing, an honest workload-rule name, and
+immutable option/resource/prompt/checker configuration snapshots.
+PR 6 adds capability-separated feedback channels, immutable workload manifests,
+explicit missing-result accounting, duplicate-utility rejection, separately
+disclosed blind/training costs, and transactional account/adaptation subbudgets.
 
 The authoritative Python package lives under `src/iceberg_router`. Its layers are:
 

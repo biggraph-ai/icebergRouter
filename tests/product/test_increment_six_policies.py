@@ -10,23 +10,30 @@ sys.path.insert(0, str(BASE / "src"))
 
 from iceberg_router.contracts import (  # noqa: E402
     CandidateDecision,
+    ConfigurationSnapshot,
     CostEstimate,
     DecisionId,
     EstimateState,
+    FrozenOptionVersion,
     Nanodollars,
     OptionId,
     PolicyVersion,
     Probability,
     RequestId,
     SnapshotVersion,
+    TaskFeatures,
     WorkloadId,
 )
 from iceberg_router.policies import (  # noqa: E402
     FixedPolicy,
+    DrawThenDeferMixturePolicy,
+    FeasibleMixturePolicy,
     PolicyConfigurationError,
     PolicyRequest,
     RandomMixturePolicy,
     TaskRulePolicy,
+    TaskFeatureRulePolicy,
+    WorkloadRulePolicy,
 )
 
 
@@ -42,6 +49,15 @@ def candidate(name: str, eligible: bool = True) -> CandidateDecision:
 
 
 def request(*items: CandidateDecision, workload: str = "chat", seed: str = "seed-1"):
+    configuration = ConfigurationSnapshot(
+        "config-v1",
+        {
+            item.option_id: FrozenOptionVersion(
+                "option-v1", f"{item.option_id.value}-model-v1", "prompt-v1", "checker-v1"
+            )
+            for item in items
+        },
+    )
     return PolicyRequest(
         DecisionId("decision-1"),
         RequestId("request-1"),
@@ -49,6 +65,8 @@ def request(*items: CandidateDecision, workload: str = "chat", seed: str = "seed
         SnapshotVersion("snapshot-v1"),
         tuple(items),
         seed,
+        TaskFeatures("general", (), "features-v1"),
+        configuration,
     )
 
 
@@ -102,7 +120,7 @@ class TaskRulePolicyTests(unittest.TestCase):
         )
         self.assertEqual(
             no_fallback.select(request(candidate("small"))).deferral_reason,
-            "no_task_rule",
+            "no_workload_rule",
         )
         self.assertEqual(
             no_fallback.select(

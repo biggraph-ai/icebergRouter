@@ -207,6 +207,26 @@ class IcebergRouter:
                 "snapshotVersion": policy.snapshot_version.value,
                 "candidates": [candidate.to_json() for candidate in policy.candidates],
                 "randomizationSeed": policy.randomization_seed,
+                "taskFeatures": {
+                    "taskFamily": policy.task_features.task_family,
+                    "attributes": list(policy.task_features.attributes),
+                    "version": policy.task_features.version,
+                },
+                "configurationSnapshot": {
+                    "version": policy.configuration_snapshot.version,
+                    "options": {
+                        option_id.value: {
+                            "optionVersion": frozen.option_version,
+                            "resourceRevision": frozen.resource_revision,
+                            "promptRevision": frozen.prompt_revision,
+                            "checkerRevision": frozen.checker_revision,
+                        }
+                        for option_id, frozen in sorted(
+                            policy.configuration_snapshot.options.items(),
+                            key=lambda item: item[0].value,
+                        )
+                    },
+                },
             },
             "options": {
                 option_id.value: option.definition.to_json()

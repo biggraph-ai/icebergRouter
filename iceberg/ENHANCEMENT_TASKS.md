@@ -295,28 +295,28 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Convert finite decimals to integer coefficients from `Decimal.as_tuple()`
+- [x] Convert finite decimals to integer coefficients from `Decimal.as_tuple()`
       without arithmetic subject to ambient context; reduce by the common GCD.
-- [ ] Prove sampler support for the reduced denominator or reject it before sampling.
-- [ ] Bound rejection iterations defensively even after denominator validation.
-- [ ] Derive logged propensities from the exact mechanism and eligibility rule.
-- [ ] Preserve the existing draw-then-defer policy under an explicit baseline name.
-- [ ] Add a separately named feasible-mixture policy that renormalizes exact weights
+- [x] Prove sampler support for the reduced denominator or reject it before sampling.
+- [x] Bound rejection iterations defensively even after denominator validation.
+- [x] Derive logged propensities from the exact mechanism and eligibility rule.
+- [x] Preserve the existing draw-then-defer policy under an explicit baseline name.
+- [x] Add a separately named feasible-mixture policy that renormalizes exact weights
       over eligible options; do not change existing semantics silently.
-- [ ] Rename `TaskRulePolicy` to `WorkloadRulePolicy` with a reviewed compatibility
+- [x] Rename `TaskRulePolicy` to `WorkloadRulePolicy` with a reviewed compatibility
       alias, or add explicit task/context feature contracts and a genuinely
       task-feature-aware policy.
-- [ ] Include frozen option/model/prompt/checker versions in experiment snapshots;
+- [x] Include frozen option/model/prompt/checker versions in experiment snapshots;
       configuration changes create new option versions.
 
 **Acceptance regressions**
 
-- [ ] high-precision equivalent distributions terminate or reject before the loop;
-- [ ] reduced exact weights, empirical draw thresholds, and recorded probabilities
+- [x] high-precision equivalent distributions terminate or reject before the loop;
+- [x] reduced exact weights, empirical draw thresholds, and recorded probabilities
       agree by construction;
-- [ ] deterministic seeds replay identical decisions;
-- [ ] draw-then-defer and feasible-mixture controls have distinct names and tests;
-- [ ] arithmetic and document task features route differently in a heterogeneous fixture.
+- [x] deterministic seeds replay identical decisions;
+- [x] draw-then-defer and feasible-mixture controls have distinct names and tests;
+- [x] arithmetic and document task features route differently in a heterogeneous fixture.
 
 ---
 
@@ -334,33 +334,33 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Introduce capability-separated views/APIs for operational checker evidence,
+- [x] Introduce capability-separated views/APIs for operational checker evidence,
       user feedback, training labels, and blind final evaluation.
-- [ ] Prevent learning/probe code from importing or receiving blind-evaluation data.
-- [ ] Preserve Accept/Reject/Abstain/Missing and independent objective/checker states.
-- [ ] Add an immutable workload manifest with expected request identities, split,
+- [x] Prevent learning/probe code from importing or receiving blind-evaluation data.
+- [x] Preserve Accept/Reject/Abstain/Missing and independent objective/checker states.
+- [x] Add an immutable workload manifest with expected request identities, split,
       task features, and frozen version references.
-- [ ] Build reports by joining results to the manifest; either emit explicit missing
+- [x] Build reports by joining results to the manifest; either emit explicit missing
       rows or fail on incompleteness according to declared mode.
-- [ ] Add `MISSING` to service accounting while retaining served/deferred/failed/pending.
-- [ ] Enforce at most one final served utility per original request.
-- [ ] Add transactional account/subbudget ceilings nested under the shared budget,
+- [x] Add `MISSING` to service accounting while retaining served/deferred/failed/pending.
+- [x] Enforce at most one final served utility per original request.
+- [x] Add transactional account/subbudget ceilings nested under the shared budget,
       including an adaptation cap.
-- [ ] Charge probe, feature, operational checker, serving, and audit costs inside the
+- [x] Charge probe, feature, operational checker, serving, and audit costs inside the
       common cap when they affect decisions.
-- [ ] Disclose blind scoring/training cost separately and prevent final labels from
+- [x] Disclose blind scoring/training cost separately and prevent final labels from
       selecting probes or updating production policy.
-- [ ] Require real conditional traces for workflow claims; label independent
+- [x] Require real conditional traces for workflow claims; label independent
       completion matrices as single-call synthetic/offline evidence.
 
 **Acceptance regressions**
 
-- [ ] learning view cannot read a blind-evaluation record;
-- [ ] a four-request manifest plus three results reports denominator four or raises
+- [x] learning view cannot read a blind-evaluation record;
+- [x] a four-request manifest plus three results reports denominator four or raises
       the configured explicit incompleteness error;
-- [ ] duplicate final utility for one request is rejected;
-- [ ] adaptation-cap exhaustion stops probes while remaining serving funds are usable;
-- [ ] all decision-informing paid operations appear in account totals.
+- [x] duplicate final utility for one request is rejected;
+- [x] adaptation-cap exhaustion stops probes while remaining serving funds are usable;
+- [x] all decision-informing paid operations appear in account totals.
 
 ---
 

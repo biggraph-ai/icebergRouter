@@ -64,6 +64,16 @@ class BudgetSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountBudgetSnapshot:
+    budget_id: BudgetId
+    account_id: AccountId
+    total: Nanodollars
+    confirmed_spend: Nanodollars
+    outstanding_liability: Nanodollars
+    available: Nanodollars
+
+
+@dataclass(frozen=True, slots=True)
 class ReservationRecord:
     reservation_id: ReservationId
     budget_id: BudgetId
@@ -107,6 +117,13 @@ CREATE TABLE IF NOT EXISTS reservations (
     actual_cost_nanos INTEGER CHECK(actual_cost_nanos >= 0),
     settlement_key TEXT,
     UNIQUE(budget_id, settlement_key)
+);
+
+CREATE TABLE IF NOT EXISTS account_budgets (
+    budget_id TEXT NOT NULL REFERENCES budgets(budget_id),
+    account_id TEXT NOT NULL,
+    total_nanos INTEGER NOT NULL CHECK(total_nanos >= 0),
+    PRIMARY KEY(budget_id, account_id)
 );
 
 CREATE TABLE IF NOT EXISTS authorizations (
@@ -205,6 +222,52 @@ class SQLiteBudgetLedger:
         with closing(self._connect()) as connection:
             return self._snapshot(connection, budget_id)
 
+    def set_account_budget(
+        self, budget_id: BudgetId, account_id: AccountId, total: Nanodollars
+    ) -> AccountBudgetSnapshot:
+        for value, expected, name in (
+            (budget_id, BudgetId, "budget_id"),
+            (account_id, AccountId, "account_id"),
+            (total, Nanodollars, "total"),
+        ):
+            self._require_type(value, expected, name)
+        with self._write() as connection:
+            parent = self._snapshot(connection, budget_id)
+            if total > parent.total:
+                raise ValueError("account budget cannot exceed parent budget")
+            existing = connection.execute(
+                "SELECT total_nanos FROM account_budgets "
+                "WHERE budget_id = ? AND account_id = ?",
+                (budget_id.value, account_id.value),
+            ).fetchone()
+            if existing is None:
+                connection.execute(
+                    "INSERT INTO account_budgets VALUES (?, ?, ?)",
+                    (budget_id.value, account_id.value, total.value),
+                )
+            elif existing["total_nanos"] != total.value:
+                raise DuplicateConflict("account budget already has a different total")
+            return self._account_snapshot(connection, budget_id, account_id)
+
+    def account_snapshot(
+        self, budget_id: BudgetId, account_id: AccountId
+    ) -> AccountBudgetSnapshot:
+        self._require_type(budget_id, BudgetId, "budget_id")
+        self._require_type(account_id, AccountId, "account_id")
+        with closing(self._connect()) as connection:
+            return self._account_snapshot(connection, budget_id, account_id)
+
+    def account_totals(self, budget_id: BudgetId) -> dict[AccountId, Nanodollars]:
+        self._require_type(budget_id, BudgetId, "budget_id")
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                "SELECT account_id, COALESCE(SUM(actual_cost_nanos), 0) AS total "
+                "FROM reservations WHERE budget_id = ? "
+                "AND state IN ('settled', 'breached') GROUP BY account_id",
+                (budget_id.value,),
+            ).fetchall()
+        return {AccountId(row["account_id"]): Nanodollars(row["total"]) for row in rows}
+
     def reserve(
         self,
         *,
@@ -255,6 +318,9 @@ class SQLiteBudgetLedger:
                 raise AdmissionDenied("budget is halted after a contract breach")
             if max_liability > snapshot.available:
                 raise AdmissionDenied("upper liability exceeds available budget")
+            self._require_account_capacity(
+                connection, budget_id, account_id, max_liability
+            )
             connection.execute(
                 """
                 INSERT INTO reservations(
@@ -369,6 +435,9 @@ class SQLiteBudgetLedger:
                     raise AdmissionDenied("budget is halted after a contract breach")
                 if max_liability > snapshot.available:
                     raise AdmissionDenied("upper liability exceeds available budget")
+                self._require_account_capacity(
+                    connection, budget_id, account_id, max_liability
+                )
                 connection.execute(
                     """
                     INSERT INTO reservations(
@@ -441,9 +510,13 @@ class SQLiteBudgetLedger:
                     "attemptId": attempt_id.value,
                 },
             )
-            return self._record(reservation_row), self._authorization_record(authorization_row)
+            return self._record(reservation_row), self._authorization_record(
+                authorization_row
+            )
 
-    def mark_pending(self, reservation_id: ReservationId, *, idempotency_key: str) -> SettlementResult:
+    def mark_pending(
+        self, reservation_id: ReservationId, *, idempotency_key: str
+    ) -> SettlementResult:
         self._require_type(reservation_id, ReservationId, "reservation_id")
         self._require_key(idempotency_key)
         with self._write() as connection:
@@ -597,7 +670,8 @@ class SQLiteBudgetLedger:
         if budget is None:
             raise BudgetNotFound(f"budget {budget_id.value!r} does not exist")
         rows = connection.execute(
-            "SELECT state, max_liability_nanos, actual_cost_nanos FROM reservations WHERE budget_id = ?",
+            "SELECT state, max_liability_nanos, actual_cost_nanos "
+            "FROM reservations WHERE budget_id = ?",
             (budget_id.value,),
         ).fetchall()
         confirmed_value = sum(
@@ -621,6 +695,59 @@ class SQLiteBudgetLedger:
             available=Nanodollars(available_value),
             halted=bool(budget["halted"]),
         )
+
+    def _account_snapshot(
+        self,
+        connection: sqlite3.Connection,
+        budget_id: BudgetId,
+        account_id: AccountId,
+    ) -> AccountBudgetSnapshot:
+        row = connection.execute(
+            "SELECT total_nanos FROM account_budgets "
+            "WHERE budget_id = ? AND account_id = ?",
+            (budget_id.value, account_id.value),
+        ).fetchone()
+        if row is None:
+            raise BudgetNotFound("account budget does not exist")
+        reservations = connection.execute(
+            "SELECT state, max_liability_nanos, actual_cost_nanos FROM reservations "
+            "WHERE budget_id = ? AND account_id = ?",
+            (budget_id.value, account_id.value),
+        ).fetchall()
+        confirmed = sum(
+            item["actual_cost_nanos"]
+            for item in reservations
+            if item["state"] in ("settled", "breached")
+        )
+        outstanding = sum(
+            item["max_liability_nanos"]
+            for item in reservations
+            if item["state"] in ("held", "pending")
+        )
+        return AccountBudgetSnapshot(
+            budget_id,
+            account_id,
+            Nanodollars(row["total_nanos"]),
+            Nanodollars(confirmed),
+            Nanodollars(outstanding),
+            Nanodollars(max(0, row["total_nanos"] - confirmed - outstanding)),
+        )
+
+    def _require_account_capacity(
+        self,
+        connection: sqlite3.Connection,
+        budget_id: BudgetId,
+        account_id: AccountId,
+        liability: Nanodollars,
+    ) -> None:
+        row = connection.execute(
+            "SELECT 1 FROM account_budgets WHERE budget_id = ? AND account_id = ?",
+            (budget_id.value, account_id.value),
+        ).fetchone()
+        if row is None:
+            return
+        if liability > self._account_snapshot(connection, budget_id, account_id).available:
+            raise AdmissionDenied("upper liability exceeds account subbudget")
 
     @staticmethod
     def _reservation_row(

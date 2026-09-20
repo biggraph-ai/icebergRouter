@@ -35,6 +35,14 @@ class CheckerResult(str, Enum):
     NOT_RUN = "not_run"
 
 
+class FeedbackChannel(str, Enum):
+    LEGACY_COMBINED = "legacy_combined"
+    OPERATIONAL_CHECKER = "operational_checker"
+    USER = "user"
+    TRAINING_LABEL = "training_label"
+    BLIND_EVALUATION = "blind_evaluation"
+
+
 @dataclass(frozen=True, slots=True)
 class FeedbackEvent:
     event_id: EventId
@@ -47,6 +55,7 @@ class FeedbackEvent:
     evaluator_version: EvaluatorVersion
     observed_at: str
     visible_at: str
+    channel: FeedbackChannel = FeedbackChannel.LEGACY_COMBINED
 
     def __post_init__(self) -> None:
         required_types = (
@@ -62,6 +71,7 @@ class FeedbackEvent:
             (self.user_vote, UserVote, "user_vote"),
             (self.objective_result, ObjectiveResult, "objective_result"),
             (self.checker_result, CheckerResult, "checker_result"),
+            (self.channel, FeedbackChannel, "channel"),
         )
         for value, expected, name in enum_fields:
             if not isinstance(value, expected):
@@ -84,6 +94,7 @@ class FeedbackEvent:
             "evaluatorVersion": self.evaluator_version.to_json(),
             "observedAt": self.observed_at,
             "visibleAt": self.visible_at,
+            "channel": self.channel.value,
         }
 
     @classmethod
@@ -103,6 +114,7 @@ class FeedbackEvent:
                 "evaluatorVersion",
                 "observedAt",
                 "visibleAt",
+                "channel",
             },
         )
         try:
@@ -122,4 +134,5 @@ class FeedbackEvent:
             evaluator_version=EvaluatorVersion.from_json(obj["evaluatorVersion"]),
             observed_at=require_text(obj["observedAt"], "observedAt"),
             visible_at=require_text(obj["visibleAt"], "visibleAt"),
+            channel=FeedbackChannel(obj["channel"]),
         )

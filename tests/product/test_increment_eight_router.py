@@ -21,10 +21,12 @@ from iceberg_router.contracts import (  # noqa: E402
     BranchOutcome,
     BudgetId,
     CandidateDecision,
+    ConfigurationSnapshot,
     CostEstimate,
     DecisionId,
     EstimateState,
     EstimatorVersion,
+    FrozenOptionVersion,
     InputBinding,
     Nanodollars,
     NodeId,
@@ -43,6 +45,7 @@ from iceberg_router.contracts import (  # noqa: E402
     SnapshotVersion,
     TerminalNode,
     TerminalStatus,
+    TaskFeatures,
     UsageState,
     WorkloadId,
 )
@@ -131,6 +134,16 @@ def policy_request(*candidates):
         SnapshotVersion("snapshot-v1"),
         tuple(candidates),
         "seed-1",
+        TaskFeatures("general", (), "features-v1"),
+        ConfigurationSnapshot(
+            "config-v1",
+            {
+                item.option_id: FrozenOptionVersion(
+                    "option-v1", "v1", "prompt-v1", None
+                )
+                for item in candidates
+            },
+        ),
     )
 
 

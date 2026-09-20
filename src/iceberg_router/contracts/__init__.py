@@ -17,7 +17,13 @@ from .decisions import (
     Score,
 )
 from .events import TraceEvent, TraceEventKind, UsageEvent, UsageState
-from .feedback import CheckerResult, FeedbackEvent, ObjectiveResult, UserVote
+from .feedback import (
+    CheckerResult,
+    FeedbackChannel,
+    FeedbackEvent,
+    ObjectiveResult,
+    UserVote,
+)
 from .identifiers import (
     AccountId,
     AttemptId,
@@ -55,7 +61,13 @@ from .options import (
     TerminalNode,
     TerminalStatus,
 )
-from .routing import PolicyRequest, RoutingPolicy
+from .routing import (
+    ConfigurationSnapshot,
+    FrozenOptionVersion,
+    PolicyRequest,
+    RoutingPolicy,
+    TaskFeatures,
+)
 from .resources import BoundedContractEvidence, ResourceIdentity
 
 __all__ = (
@@ -75,6 +87,7 @@ __all__ = (
     "CandidateDecision",
     "CheckerResult",
     "CostEstimate",
+    "ConfigurationSnapshot",
     "DecisionId",
     "DecisionRecord",
     "EstimateState",
@@ -82,6 +95,8 @@ __all__ = (
     "EvaluatorVersion",
     "EventId",
     "FeedbackEvent",
+    "FeedbackChannel",
+    "FrozenOptionVersion",
     "Identifier",
     "InputBinding",
     "MAX_NANODOLLARS",
@@ -116,6 +131,7 @@ __all__ = (
     "UserVote",
     "TerminalNode",
     "TerminalStatus",
+    "TaskFeatures",
     "WorkloadId",
     "ZERO_NANODOLLARS",
     "checked_sum",

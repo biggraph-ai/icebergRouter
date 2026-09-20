@@ -14,6 +14,7 @@ from iceberg_router.contracts.feedback import (
 )
 from iceberg_router.contracts.identifiers import DecisionId, OptionId, RequestId
 from iceberg_router.contracts.money import Nanodollars, checked_sum
+from iceberg_router.contracts.routing import ConfigurationSnapshot, TaskFeatures
 
 
 class EvaluationError(ValueError):
@@ -30,6 +31,58 @@ class ServiceOutcome(str, Enum):
     DEFERRED = "deferred"
     FAILED = "failed"
     PENDING = "pending"
+    MISSING = "missing"
+
+
+class WorkloadSplit(str, Enum):
+    TRAIN = "train"
+    CALIBRATION = "calibration"
+    PROBE = "probe"
+    FINAL_EVALUATION = "final_evaluation"
+
+
+class MissingResultMode(str, Enum):
+    SYNTHESIZE = "synthesize"
+    ERROR = "error"
+
+
+class TraceEvidenceKind(str, Enum):
+    CONDITIONAL_TRACE = "conditional_trace"
+    SINGLE_CALL_MATRIX = "single_call_matrix"
+
+
+@dataclass(frozen=True, slots=True)
+class WorkloadManifestEntry:
+    request_id: RequestId
+    split: WorkloadSplit
+    task_features: TaskFeatures
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.request_id, RequestId):
+            raise TypeError("request_id must be RequestId")
+        if not isinstance(self.split, WorkloadSplit):
+            raise TypeError("split must be WorkloadSplit")
+        if not isinstance(self.task_features, TaskFeatures):
+            raise TypeError("task_features must be TaskFeatures")
+
+
+@dataclass(frozen=True, slots=True)
+class WorkloadManifest:
+    version: str
+    configuration_snapshot: ConfigurationSnapshot
+    entries: tuple[WorkloadManifestEntry, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.version, str) or not self.version:
+            raise ValueError("version must be a non-empty string")
+        if not isinstance(self.configuration_snapshot, ConfigurationSnapshot):
+            raise TypeError("configuration_snapshot must be ConfigurationSnapshot")
+        if not isinstance(self.entries, tuple) or not self.entries:
+            raise ValueError("entries must be a non-empty tuple")
+        if any(not isinstance(item, WorkloadManifestEntry) for item in self.entries):
+            raise TypeError("entries must contain WorkloadManifestEntry")
+        if len({item.request_id for item in self.entries}) != len(self.entries):
+            raise ValueError("manifest request IDs must be unique")
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +122,8 @@ class EvaluationObservation:
     user_vote: UserVote = UserVote.MISSING
     objective_result: ObjectiveResult = ObjectiveResult.UNKNOWN
     checker_result: CheckerResult = CheckerResult.NOT_RUN
+    final_utility: int | None = None
+    trace_evidence: TraceEvidenceKind = TraceEvidenceKind.CONDITIONAL_TRACE
 
     def __post_init__(self) -> None:
         for value, expected, field in (
@@ -98,6 +153,19 @@ class EvaluationObservation:
             raise TypeError("objective_result must be ObjectiveResult")
         if not isinstance(self.checker_result, CheckerResult):
             raise TypeError("checker_result must be CheckerResult")
+        if self.final_utility is not None and (
+            isinstance(self.final_utility, bool) or not isinstance(self.final_utility, int)
+        ):
+            raise TypeError("final_utility must be an integer or None")
+        if self.final_utility is not None and self.service_outcome is not ServiceOutcome.SERVED:
+            raise ValueError("final utility is permitted only for served requests")
+        if not isinstance(self.trace_evidence, TraceEvidenceKind):
+            raise TypeError("trace_evidence must be TraceEvidenceKind")
+        if (
+            self.evidence_kind is EvidenceKind.EXECUTED
+            and self.trace_evidence is TraceEvidenceKind.SINGLE_CALL_MATRIX
+        ):
+            raise ValueError("single-call matrices cannot be executed workflow evidence")
         if self.service_outcome is ServiceOutcome.PENDING and self.unknown_cost_attempts == 0:
             raise ValueError("pending service requires at least one unknown-cost attempt")
 
@@ -113,6 +181,8 @@ class EvaluationSummary:
     user_vote_counts: Mapping[UserVote, int]
     objective_counts: Mapping[ObjectiveResult, int]
     checker_counts: Mapping[CheckerResult, int]
+    blind_scoring_cost: Nanodollars = Nanodollars(0)
+    training_cost: Nanodollars = Nanodollars(0)
 
     def __post_init__(self) -> None:
         if not isinstance(self.evidence_kind, EvidenceKind):
@@ -125,6 +195,10 @@ class EvaluationSummary:
             raise ValueError("original_workload_size must be positive")
         if not isinstance(self.known_cost, Nanodollars):
             raise TypeError("known_cost must be Nanodollars")
+        if not isinstance(self.blind_scoring_cost, Nanodollars):
+            raise TypeError("blind_scoring_cost must be Nanodollars")
+        if not isinstance(self.training_cost, Nanodollars):
+            raise TypeError("training_cost must be Nanodollars")
         if isinstance(self.unknown_cost_attempts, bool) or not isinstance(
             self.unknown_cost_attempts, int
         ):
@@ -216,6 +290,8 @@ class EvaluationSummary:
             },
             "coverage": self.coverage.to_json(),
             "deferralRate": self.deferral_rate.to_json(),
+            "blindScoringCostNanos": self.blind_scoring_cost.to_json(),
+            "trainingCostNanos": self.training_cost.to_json(),
         }
 
 
@@ -226,7 +302,12 @@ def _counts(enum_type, observations: Sequence[EvaluationObservation], attribute:
     }
 
 
-def summarize(observations: Sequence[EvaluationObservation]) -> EvaluationSummary:
+def summarize(
+    observations: Sequence[EvaluationObservation],
+    *,
+    blind_scoring_cost: Nanodollars = Nanodollars(0),
+    training_cost: Nanodollars = Nanodollars(0),
+) -> EvaluationSummary:
     """Aggregate a homogeneous evidence table without dropping deferred rows."""
     if not isinstance(observations, Sequence) or not observations:
         raise EvaluationError("observations must be a non-empty sequence")
@@ -257,7 +338,45 @@ def summarize(observations: Sequence[EvaluationObservation]) -> EvaluationSummar
         user_vote_counts=_counts(UserVote, observations, "user_vote"),
         objective_counts=_counts(ObjectiveResult, observations, "objective_result"),
         checker_counts=_counts(CheckerResult, observations, "checker_result"),
+        blind_scoring_cost=blind_scoring_cost,
+        training_cost=training_cost,
     )
+
+
+def summarize_manifest(
+    manifest: WorkloadManifest,
+    observations: Sequence[EvaluationObservation],
+    *,
+    mode: MissingResultMode = MissingResultMode.SYNTHESIZE,
+) -> EvaluationSummary:
+    if not isinstance(manifest, WorkloadManifest):
+        raise TypeError("manifest must be WorkloadManifest")
+    if not isinstance(mode, MissingResultMode):
+        raise TypeError("mode must be MissingResultMode")
+    supplied = {item.request_id: item for item in observations}
+    if len(supplied) != len(observations):
+        raise EvaluationError("duplicate final utility/result for a request")
+    expected = {item.request_id for item in manifest.entries}
+    extras = set(supplied) - expected
+    if extras:
+        raise EvaluationError("results contain requests absent from the manifest")
+    missing = expected - set(supplied)
+    if missing and mode is MissingResultMode.ERROR:
+        raise EvaluationError("manifest results are incomplete")
+    completed = list(observations)
+    for request_id in sorted(missing, key=lambda item: item.value):
+        completed.append(
+            EvaluationObservation(
+                request_id,
+                DecisionId(f"missing-{request_id.value}"),
+                EvidenceKind.EXECUTED,
+                ServiceOutcome.MISSING,
+                None,
+                Nanodollars(0),
+                0,
+            )
+        )
+    return summarize(tuple(completed))
 
 
 __all__ = (
@@ -267,5 +386,11 @@ __all__ = (
     "EvidenceKind",
     "ExactRate",
     "ServiceOutcome",
+    "MissingResultMode",
+    "TraceEvidenceKind",
+    "WorkloadManifest",
+    "WorkloadManifestEntry",
+    "WorkloadSplit",
     "summarize",
+    "summarize_manifest",
 )

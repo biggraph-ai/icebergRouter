@@ -12,7 +12,13 @@ from .executor import (
     OptionExecutor,
 )
 from .governor import AdmissionRequest, AuthorizedAttempt, BoundUnavailable, BudgetGovernor
-from .feedback_store import FeedbackSnapshot, FeedbackStoreError, JournalFeedbackStore
+from .feedback_store import (
+    BlindEvaluationCapability,
+    FeedbackChannelView,
+    FeedbackSnapshot,
+    FeedbackStoreError,
+    JournalFeedbackStore,
+)
 from .execution_store import (
     ExecutionClaim,
     ExecutionClaimState,
@@ -33,6 +39,7 @@ from .journal import (
 )
 from .ledger import (
     AdmissionDenied,
+    AccountBudgetSnapshot,
     AuthorizationRecord,
     BudgetContractBreach,
     BudgetNotFound,
@@ -57,6 +64,7 @@ from .router import (
 
 __all__ = (
     "AdmissionDenied",
+    "AccountBudgetSnapshot",
     "AdmissionRequest",
     "ArtifactResolutionError",
     "ArtifactStore",
@@ -64,6 +72,7 @@ __all__ = (
     "AuthorizationRecord",
     "AuthorizedAttempt",
     "BoundUnavailable",
+    "BlindEvaluationCapability",
     "BudgetContractBreach",
     "BudgetGovernor",
     "BudgetNotFound",
@@ -80,6 +89,7 @@ __all__ = (
     "GraphValidationError",
     "GENESIS_HASH",
     "FeedbackSnapshot",
+    "FeedbackChannelView",
     "FeedbackStoreError",
     "LedgerError",
     "JournalAppendResult",
