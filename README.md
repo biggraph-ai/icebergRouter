@@ -73,3 +73,7 @@ python -m unittest discover -s tests/study -t . -v
 See `iceberg/README.md` for supported Python versions, reference-layout
 configuration, and build-isolation limitations. See `TEST_STATUS.md` for what was
 actually tested. No upstream build or paper-result reproduction is claimed.
+
+The first reproducible baseline artifact is an offline synthetic mechanics check,
+not a model benchmark. Its command, interpretation boundaries, and blocked real-run
+gate are documented in `experiments/baselines/README.md`.

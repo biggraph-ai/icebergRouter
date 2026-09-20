@@ -180,3 +180,12 @@ SQLite account subbudgets are enforced transactionally inside the parent workloa
 budget, so adaptation can stop while serving funds remain. Evaluation discloses
 blind-scoring and training cost separately, rejects duplicate final utility, and
 does not accept independent single-call matrices as executed conditional traces.
+
+PR 7 adds a standard-library-only experiment layer which may import no runtime
+provider integration. Its frozen JSON portfolio and workload are hash-pinned by a
+provenance record. Strategies see only task features and calibration score/cost
+fields; final synthetic counterfactual outcomes enter evaluation after selection.
+All strategies share one comparison contract. Generated reports are explicitly
+synthetic, disclose every experiment account (zero external cost in this fixture),
+and prohibit superiority/theorem claims. A real conditional-workflow run remains a
+separate authorization gate rather than being simulated and called real.

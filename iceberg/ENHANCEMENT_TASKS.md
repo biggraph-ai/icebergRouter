@@ -371,28 +371,32 @@ are resolved; frozen splits and baseline characterization plans are approved.
 
 **Tasks**
 
-- [ ] Add 2–3 declared task families and 5–8 versioned fixed compound options.
-- [ ] Add deterministic, cheap/strong short-output, bounded check/repair, and other
+- [x] Add 2–3 declared task families and 5–8 versioned fixed compound options.
+- [x] Add deterministic, cheap/strong short-output, bounded check/repair, and other
       reviewed options without giving one mechanism privileged resources.
-- [ ] Reproduce fixed, feasible-mixture, and real task-feature controls first.
-- [ ] Implement `wr-paper-reproduction`, `wr-plus-common-guard`, and
+- [x] Reproduce fixed, feasible-mixture, and real task-feature controls first.
+- [x] Implement `wr-paper-reproduction`, `wr-plus-common-guard`, and
       `wr-path-plus-common-guard` as separately named artifacts.
-- [ ] Record equation/source mappings, interpretation choices, fixture hashes, split
+- [x] Record equation/source mappings, interpretation choices, fixture hashes, split
       hashes, seed, environment, and cost permissions.
-- [ ] Give every strategy the same option portfolio, limits, checker access,
+- [x] Give every strategy the same option portfolio, limits, checker access,
       workload visibility, and governor.
-- [ ] Freeze train/calibration/probe/final-evaluation splits and count every
+- [x] Freeze train/calibration/probe/final-evaluation splits and count every
       decision-informing operation.
-- [ ] Emit utility, original-workload coverage, served-task quality, actual known
+- [x] Emit utility, original-workload coverage, served-task quality, actual known
       cost, unresolved holds, latency, failures, and paired confidence intervals.
-- [ ] Keep hidden counterfactual/final labels unavailable to online policies.
-- [ ] Label local synthetic mechanics as synthetic; make no model-superiority claim.
+- [x] Keep hidden counterfactual/final labels unavailable to online policies.
+- [x] Label local synthetic mechanics as synthetic; make no model-superiority claim.
 
 **Acceptance**
 
-- [ ] one documented offline command reproduces baseline tables from a clean checkout;
+- [x] one documented offline command reproduces baseline tables from a clean checkout;
 - [ ] one smaller authorized real conditional-workflow run validates trace plumbing;
-- [ ] no Iceberg advantage or inherited WISERouter theorem is claimed.
+- [x] no Iceberg advantage or inherited WISERouter theorem is claimed.
+
+The remaining real-workflow gate is deliberately blocked pending reviewed provider
+or fixture authorization, tariffs, provenance, secrets/network permission, and a
+declared maximum expense. The completed artifact is synthetic mechanics only.
 
 ---
 

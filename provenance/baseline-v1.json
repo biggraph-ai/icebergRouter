@@ -1,0 +1,35 @@
+{
+  "costPermissions": {
+    "maximumExternalCostNanos": "0",
+    "network": false,
+    "paidCalls": false
+  },
+  "portfolioSha256": "788777662471e446279cfc673df2968149868a38cf0778d7c4f06847094d7433",
+  "schemaVersion": "baseline-provenance-v1",
+  "seed": "baseline-seed-v1",
+  "sharedComparisonContract": {
+    "checkerAccess": "identical",
+    "governor": "synthetic-common-guard-v1",
+    "portfolio": "portfolio-v1",
+    "resourceLimits": "portfolio-declared-v1",
+    "workloadVisibility": "task-features-and-calibration-scores"
+  },
+  "sourceMappings": {
+    "wr-paper-reproduction": {
+      "code": "iceberg_router.experiments.baseline:_choice",
+      "interpretation": "Frozen calibration score as expected reward; frozen expected cost constrained by per-round synthetic allowance; no LP solver or theorem claim.",
+      "paper": "2607.23765v1.pdf sections 3.1-3.2; local inspected summary knowledge/wiserouter-spec.md"
+    },
+    "wr-path-plus-common-guard": {
+      "code": "iceberg_router.experiments.baseline:_choice",
+      "interpretation": "Task-family option subset plus shared eligibility.",
+      "source": "Iceberg compound-path adaptation, not paper behavior"
+    },
+    "wr-plus-common-guard": {
+      "code": "iceberg_router.experiments.baseline:_choice",
+      "interpretation": "Paper-labeled local choice filtered by shared eligibility.",
+      "source": "Iceberg adaptation, not paper behavior"
+    }
+  },
+  "workloadSha256": "cbcda94d3f1913291592802ca613a027108a20817e1b13156bb452d65688c5d6"
+}

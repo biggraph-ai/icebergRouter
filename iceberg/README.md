@@ -119,3 +119,17 @@ Increment 10 tests cover visibility cutoffs, append idempotency, independent
 feedback channels, request/output filters, restart-stable versions, high-water-mark
 replay, deterministic ordering, and malformed-record rejection. They do not test
 feedback learning or claim adaptation quality.
+
+PR 7 adds a frozen **synthetic mechanics** baseline under `fixtures/`,
+`provenance/baseline-v1.json`, and `iceberg_router.experiments`. Reproduce its
+tables offline with:
+
+```sh
+PYTHONPATH=src python -m iceberg_router.experiments.baseline --output results/baseline-v1
+```
+
+The artifact compares fixed, feasible-mixture, task-feature, and three explicitly
+named local WR interpretations under one declared comparison contract. It does not
+run a model, reproduce official author code, validate a real conditional workflow,
+or establish an Iceberg advantage. The real-workflow acceptance gate remains
+blocked pending separate authorization and provenance review.

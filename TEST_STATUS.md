@@ -5,7 +5,7 @@ Date: 20 September 2026.
 Required product command executed:
 `PYTHONPATH=src python -m unittest discover -s tests/product -t . -v`
 
-Result: all 148 product tests passed. The former PR 3 identical-retry expected
+Result: all 153 product tests passed. The former PR 3 identical-retry expected
 failure is now a passing durable replay regression, and the former PR 1
 financial-truth expected failures remain ordinary passing regressions.
 They are separate from, and do not weaken, the passing current-behavior and
@@ -71,6 +71,22 @@ Result: all 25 leakage-isolation, manifest, evaluation, feedback-store, and
 subbudget acceptance tests passed. The fixtures cover blind-label isolation, a
 four-request denominator with a missing result, duplicate final utility, adaptation
 cap exhaustion with serving capacity remaining, and explicit paid-account totals.
+
+Focused PR 7 command executed:
+`PYTHONPATH=src python -m unittest tests.product.test_pr_seven_baselines tests.product.test_increment_zero -v`
+
+Result: all 9 synthetic-baseline and structure tests passed. They verify the frozen
+three-family/six-option portfolio, all four splits, named controls, shared comparison
+contract, counterfactual-label isolation, fixture hash rejection, deterministic
+paired intervals, and byte-stable offline table generation.
+
+Offline baseline command executed:
+`PYTHONPATH=src python -m iceberg_router.experiments.baseline --output results/baseline-v1`
+
+Result: `report.json` and `table.md` were reproduced without network or paid calls.
+This is synthetic mechanics evidence only. No authorized real conditional-workflow
+run was executed, and no routing-quality, Iceberg-advantage, official-author-code,
+or inherited-theorem claim is made.
 
 No claim of supported behavior for every provider or operating system is made. The
 product CI matrix declares Python 3.10–3.13; that hosted matrix was added but was
