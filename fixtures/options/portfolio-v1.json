@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "option-portfolio-v1",
+  "options": [
+    {"optionId":"deterministic-short-v1","kind":"deterministic","resourceRevision":"local-rule-v1","promptRevision":"none","checkerRevision":null,"maxOutputTokens":16,"maxAttempts":1},
+    {"optionId":"cheap-short-v1","kind":"single-model","resourceRevision":"synthetic-cheap-v1","promptRevision":"short-v1","checkerRevision":null,"maxOutputTokens":32,"maxAttempts":1},
+    {"optionId":"strong-short-v1","kind":"single-model","resourceRevision":"synthetic-strong-v1","promptRevision":"short-v1","checkerRevision":null,"maxOutputTokens":32,"maxAttempts":1},
+    {"optionId":"checked-repair-v1","kind":"draft-check-repair","resourceRevision":"synthetic-shared-v1","promptRevision":"repair-v1","checkerRevision":"checker-v1","maxOutputTokens":64,"maxAttempts":3},
+    {"optionId":"retrieval-check-v1","kind":"retrieve-draft-check","resourceRevision":"synthetic-shared-v1","promptRevision":"grounded-v1","checkerRevision":"checker-v1","maxOutputTokens":64,"maxAttempts":3},
+    {"optionId":"defer-safe-v1","kind":"deterministic-defer","resourceRevision":"local-rule-v1","promptRevision":"none","checkerRevision":null,"maxOutputTokens":0,"maxAttempts":0}
+  ]
+}

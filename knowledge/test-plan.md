@@ -30,6 +30,11 @@ tests validate plumbing/branching, not published quality or benchmark results.
 11. Integer-string money round-trips across JSON and rejects floats/overflow.
 12. Crash/replay reconstructs the same confirmed and outstanding balances.
 
+Increment 9 now provides a local synthetic fixture for items 10–11's reporting
+surface: deferrals remain in the denominator, rates remain exact fractions, known
+cost uses integer-string money, unresolved cost is counted separately, and missing
+feedback is not acceptance. This is a contract test, not an upstream reproduction.
+
 ## Reproduction record template
 
 For every eventual run capture exact command, date, OS/runtime, isolated environment

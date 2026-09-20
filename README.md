@@ -40,5 +40,44 @@ Read `AGENTS.md`, then `STUDY_ORDER.md`. Use the first prompt in `HANDOFF_PROMPT
 
 The audited user blueprint is `IcebergRouter_Implementation_Blueprint_v2_Audited.docx`. Keep that original nearby; it is not redistributed or rewritten here. `requirements/PLAN_CONSTRAINTS.md` is a working synthesis of the decisions in this conversation, not a verbatim copy of that document.
 
+## Product implementation workspace
+
+Iceberg-owned code lives under `src/iceberg_router/`; its design notes live under
+`iceberg/`. Increments 0–8 establish boundaries, portable contracts, a single-host
+budget authority, bounded option graphs, guarded execution and audit, offline
+control policies, an injected single-attempt adapter boundary, end-to-end
+orchestration, exact offline evaluation accounting, and visibility-bounded feedback
+snapshots. There is still no real provider integration, upstream reproduction,
+feedback adaptation, or Iceberg acquisition policy. See
+`iceberg/ARCHITECTURE.md` before adding product code. Reference directories must
+remain unchanged and must not be imported as runtime packages.
+
+The analyzed enhancement backlog is in
+[`iceberg/ENHANCEMENT_TASKS.md`](iceberg/ENHANCEMENT_TASKS.md). It preserves the
+requested PR 0–8 acceptance conditions and distinguishes observed gaps from
+proposed work.
+
 ## Validation
-Run `python -m unittest discover -s tests -v` for the downloader's local tests. See `TEST_STATUS.md` for what was actually tested. No upstream build or paper-result reproduction is claimed.
+Run the offline product tests without installing the package or acquiring references:
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests/product -t . -v
+```
+
+Study/downloader checks are separate and optional:
+
+```sh
+python -m unittest discover -s tests/study -t . -v
+```
+
+See `iceberg/README.md` for supported Python versions, reference-layout
+configuration, and build-isolation limitations. See `TEST_STATUS.md` for what was
+actually tested. No upstream build or paper-result reproduction is claimed.
+
+The first reproducible baseline artifact is an offline synthetic mechanics check,
+not a model benchmark. Its command, interpretation boundaries, and blocked real-run
+gate are documented in `experiments/baselines/README.md`.
+
+The follow-on PR 8 synthetic evidence-acquisition study is documented in
+`experiments/evidence/README.md`. It reports an honest null result and retains the
+simpler zero-probe configuration; it is not evidence of model or router superiority.

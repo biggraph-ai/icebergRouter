@@ -1,46 +1,39 @@
 # Repository study note: routellm
 
 Repository URL: https://github.com/lm-sys/RouteLLM.git
-Pinned SHA: NOT AVAILABLE (fetch blocked before `FETCH_HEAD`)
-Reviewed files/symbols/line ranges: NONE—source was not retrieved
-Paper or upstream documentation: workspace manifest/register only; upstream README NOT INSPECTED
-Code / dataset / checkpoint license status: Apache-2.0 is reported by the workspace; NOT VERIFIED at a pinned commit
+Pinned SHA: 02d02f10ab10c930604b82a506b76af337b2982c (enclosing snapshot; upstream SHA unknown)
+Reviewed files/symbols/line ranges: `routellm/controller.py:Controller` (41–170); `routellm/routers/routers.py:Router` (32–45), router implementations (51–253); `routellm/calibrate_threshold.py` (50–58)
+Paper or upstream documentation: root README inspected; claims below use code unless labeled documented
+Code / dataset / checkpoint license status: see reuse/open questions
 
 ## Observed responsibility
 
-No code behavior was observed. The workspace characterizes RouteLLM as a
-model-selection and threshold-calibration baseline.
+Strong-versus-weak selection. `score >= threshold` chooses strong; calibration selects a score quantile for a desired strong-call percentage. Controller then delegates the selected call to LiteLLM.
 
 ## Call-chain trace
 
-Target trace, still UNVERIFIED: request → router feature/score → calibrated
-threshold → weak/strong model choice → provider execution → output. The controller,
-router implementations, calibration code, evaluation code, and tests remain to be
-inspected. Preference prediction must not be relabeled objective correctness.
+messages (last turn only) → router score → threshold → model name → LiteLLM completion → response. Some router constructors download checkpoints/datasets; similarity-weighted scoring calls an embedding API.
+
+## Inputs, outputs and state
+
+See `source-map.md` for the precise schemas and symbol evidence. Mutable model/config/cache state remains upstream-specific; Iceberg adapters must snapshot versions rather than expose live objects.
 
 ## Budget and feedback assumptions
 
-UNKNOWN. Threshold calibration must be examined for its cost model, target metric,
-training feedback, and whether it offers any per-request liability guarantee.
+Defaults cite Arena human-preference and GPT-4-judge battles. This is preference/judge evidence, not objective correctness. Strong-call share is neither expected dollar budget nor a liability bound. Gateway retries/costs are not recorded by the pure route result.
 
 ## Reuse decision
 
-Isolated baseline adapter after inspection; do not adopt its controller as the
-common budget governor or claim its score is a success probability.
+Isolated decision adapter. Iceberg owns option eligibility, execution authorization, attempt/retry trace, exact cost, and objective/user feedback channels. Apache-2.0 root text observed; artifacts retain separate terms.
 
 ## Minimal test proposal
 
-At the pinned SHA, import only the smallest scoring/selection boundary in an
-isolated environment and use mocked inference with scores immediately below, at,
-and above a calibrated threshold. No model/API call, dataset, secret, or paid cost.
-This validates branching only, not trained-router quality.
+After isolated pinned dependencies: invoke `Router.route` with a stub scorer at `t-ε`, `t`, and `t+ε`; no provider/data/network/secret; $0. Expect weak, strong, strong. This tests branching only.
 
 ## Executed evidence
 
-Core source-only fetch FAILED with HTTPS CONNECT 403 on 2026-09-15. No upstream
-tests or scripts ran.
+NOT RUN. On 2026-09-15 this pass only read source in the supplied Linux workspace. No dependencies were installed; no upstream script, model, dataset, checkpoint, service, network request, or paid call was executed.
 
 ## Open questions
 
-Exact SHA/symbols, license/notices, score orientation, equality behavior,
-calibration objective, model-call retries, usage accounting, and failure fallback.
+Original upstream SHA/artifact hashes unknown; constructor network side effects; calibration dataset availability; LiteLLM retry/fallback behavior.
