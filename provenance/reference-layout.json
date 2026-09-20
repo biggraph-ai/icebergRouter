@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "optional": true,
+  "canonicalRoot": "references/repos",
+  "repositories": [
+    {
+      "id": "llmrouterbench",
+      "canonicalPath": "llmrouterbench",
+      "legacyPaths": ["LLMRouterBench"]
+    },
+    {
+      "id": "routellm",
+      "canonicalPath": "routellm",
+      "legacyPaths": ["RouteLLM"]
+    },
+    {
+      "id": "cascade-routing",
+      "canonicalPath": "cascade-routing",
+      "legacyPaths": ["cascade-routing"]
+    },
+    {
+      "id": "r2-router",
+      "canonicalPath": "r2-router",
+      "legacyPaths": ["R2-Router"]
+    },
+    {
+      "id": "llmrouter",
+      "canonicalPath": "llmrouter",
+      "legacyPaths": ["LLMRouter"]
+    },
+    {
+      "id": "litellm",
+      "canonicalPath": "litellm",
+      "legacyPaths": ["litellm"]
+    }
+  ]
+}

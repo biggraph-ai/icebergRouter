@@ -1,0 +1,151 @@
+{
+  "claims": {
+    "icebergAdvantage": false,
+    "inheritedWiserouterTheorem": false,
+    "modelSuperiority": false
+  },
+  "costPermissions": {
+    "maximumExternalCostNanos": "0",
+    "network": false,
+    "paidCalls": false
+  },
+  "environment": {
+    "implementation": "CPython",
+    "python": "3.14.4"
+  },
+  "evidence": "synthetic-mechanics-only",
+  "experimentAccountCostsNanos": {
+    "audit": "0",
+    "blindEvaluation": "0",
+    "calibration": "0",
+    "feature": "0",
+    "operationalChecker": "0",
+    "probe": "0",
+    "serving": "0",
+    "training": "0"
+  },
+  "fixtureHashes": {
+    "portfolio": "788777662471e446279cfc673df2968149868a38cf0778d7c4f06847094d7433",
+    "workload": "cbcda94d3f1913291592802ca613a027108a20817e1b13156bb452d65688c5d6"
+  },
+  "schemaVersion": "baseline-results-v1",
+  "seed": "baseline-seed-v1",
+  "sharedComparisonContract": {
+    "checkerAccess": "identical",
+    "governor": "synthetic-common-guard-v1",
+    "portfolio": "portfolio-v1",
+    "resourceLimits": "portfolio-declared-v1",
+    "workloadVisibility": "task-features-and-calibration-scores"
+  },
+  "splitHash": "be561045820d6f00ba81ecc4f83868b10e9a0a6f2fd0701306528fe45d568e5d",
+  "strategies": {
+    "feasible-mixture": {
+      "actualKnownCostNanos": "100",
+      "coverage": {
+        "denominator": 6,
+        "numerator": 3
+      },
+      "failures": 0,
+      "latencyMillis": 70,
+      "pairedUtilityDifferenceVsFixed95PercentInterval": [
+        -0.833333,
+        0.333333
+      ],
+      "requests": 6,
+      "served": 3,
+      "servedTaskQuality": 1,
+      "unresolvedHoldsNanos": "0",
+      "utility": 3
+    },
+    "fixed-cheap": {
+      "actualKnownCostNanos": "120",
+      "coverage": {
+        "denominator": 6,
+        "numerator": 5
+      },
+      "failures": 1,
+      "latencyMillis": 84,
+      "pairedUtilityDifferenceVsFixed95PercentInterval": [
+        0.0,
+        0.0
+      ],
+      "requests": 6,
+      "served": 5,
+      "servedTaskQuality": 1,
+      "unresolvedHoldsNanos": "0",
+      "utility": 5
+    },
+    "task-feature-control": {
+      "actualKnownCostNanos": "240",
+      "coverage": {
+        "denominator": 6,
+        "numerator": 3
+      },
+      "failures": 3,
+      "latencyMillis": 168,
+      "pairedUtilityDifferenceVsFixed95PercentInterval": [
+        -0.833333,
+        0.333333
+      ],
+      "requests": 6,
+      "served": 3,
+      "servedTaskQuality": 1,
+      "unresolvedHoldsNanos": "0",
+      "utility": 3
+    },
+    "wr-paper-reproduction": {
+      "actualKnownCostNanos": "140",
+      "coverage": {
+        "denominator": 6,
+        "numerator": 5
+      },
+      "failures": 0,
+      "latencyMillis": 98,
+      "pairedUtilityDifferenceVsFixed95PercentInterval": [
+        0.0,
+        0.0
+      ],
+      "requests": 6,
+      "served": 5,
+      "servedTaskQuality": 1,
+      "unresolvedHoldsNanos": "0",
+      "utility": 5
+    },
+    "wr-path-plus-common-guard": {
+      "actualKnownCostNanos": "220",
+      "coverage": {
+        "denominator": 6,
+        "numerator": 4
+      },
+      "failures": 2,
+      "latencyMillis": 154,
+      "pairedUtilityDifferenceVsFixed95PercentInterval": [
+        -0.666667,
+        0.333333
+      ],
+      "requests": 6,
+      "served": 4,
+      "servedTaskQuality": 1,
+      "unresolvedHoldsNanos": "0",
+      "utility": 4
+    },
+    "wr-plus-common-guard": {
+      "actualKnownCostNanos": "190",
+      "coverage": {
+        "denominator": 6,
+        "numerator": 6
+      },
+      "failures": 0,
+      "latencyMillis": 133,
+      "pairedUtilityDifferenceVsFixed95PercentInterval": [
+        0.0,
+        0.5
+      ],
+      "requests": 6,
+      "served": 6,
+      "servedTaskQuality": 1,
+      "unresolvedHoldsNanos": "0",
+      "utility": 6
+    }
+  }
+}
