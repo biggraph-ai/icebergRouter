@@ -295,28 +295,28 @@ financial authority in this sequence.
 
 **Tasks**
 
-- [ ] Convert finite decimals to integer coefficients from `Decimal.as_tuple()`
+- [x] Convert finite decimals to integer coefficients from `Decimal.as_tuple()`
       without arithmetic subject to ambient context; reduce by the common GCD.
-- [ ] Prove sampler support for the reduced denominator or reject it before sampling.
-- [ ] Bound rejection iterations defensively even after denominator validation.
-- [ ] Derive logged propensities from the exact mechanism and eligibility rule.
-- [ ] Preserve the existing draw-then-defer policy under an explicit baseline name.
-- [ ] Add a separately named feasible-mixture policy that renormalizes exact weights
+- [x] Prove sampler support for the reduced denominator or reject it before sampling.
+- [x] Bound rejection iterations defensively even after denominator validation.
+- [x] Derive logged propensities from the exact mechanism and eligibility rule.
+- [x] Preserve the existing draw-then-defer policy under an explicit baseline name.
+- [x] Add a separately named feasible-mixture policy that renormalizes exact weights
       over eligible options; do not change existing semantics silently.
-- [ ] Rename `TaskRulePolicy` to `WorkloadRulePolicy` with a reviewed compatibility
+- [x] Rename `TaskRulePolicy` to `WorkloadRulePolicy` with a reviewed compatibility
       alias, or add explicit task/context feature contracts and a genuinely
       task-feature-aware policy.
-- [ ] Include frozen option/model/prompt/checker versions in experiment snapshots;
+- [x] Include frozen option/model/prompt/checker versions in experiment snapshots;
       configuration changes create new option versions.
 
 **Acceptance regressions**
 
-- [ ] high-precision equivalent distributions terminate or reject before the loop;
-- [ ] reduced exact weights, empirical draw thresholds, and recorded probabilities
+- [x] high-precision equivalent distributions terminate or reject before the loop;
+- [x] reduced exact weights, empirical draw thresholds, and recorded probabilities
       agree by construction;
-- [ ] deterministic seeds replay identical decisions;
-- [ ] draw-then-defer and feasible-mixture controls have distinct names and tests;
-- [ ] arithmetic and document task features route differently in a heterogeneous fixture.
+- [x] deterministic seeds replay identical decisions;
+- [x] draw-then-defer and feasible-mixture controls have distinct names and tests;
+- [x] arithmetic and document task features route differently in a heterogeneous fixture.
 
 ---
 

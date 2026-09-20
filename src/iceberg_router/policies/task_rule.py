@@ -1,4 +1,4 @@
-"""Deterministic workload-to-option control policy."""
+"""Deterministic workload and task-feature routing controls."""
 
 from __future__ import annotations
 
@@ -14,45 +14,80 @@ from .fixed import PolicyConfigurationError, PolicyRequest, _decision
 
 
 @dataclass(frozen=True, slots=True)
-class TaskRulePolicy:
+class WorkloadRulePolicy:
+    """Route by WorkloadId; this is not represented as task-aware routing."""
+
     rules: Mapping[WorkloadId, OptionId]
     policy_version: PolicyVersion
     fallback_option_id: OptionId | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.rules, Mapping):
-            raise TypeError("rules must be a mapping")
-        if not self.rules:
-            raise PolicyConfigurationError("rules must not be empty")
-        if any(not isinstance(key, WorkloadId) for key in self.rules):
-            raise TypeError("rule keys must be WorkloadId values")
-        if any(not isinstance(value, OptionId) for value in self.rules.values()):
-            raise TypeError("rule values must be OptionId values")
-        if not isinstance(self.policy_version, PolicyVersion):
-            raise TypeError("policy_version must be PolicyVersion")
-        if self.fallback_option_id is not None and not isinstance(
-            self.fallback_option_id, OptionId
-        ):
-            raise TypeError("fallback_option_id must be OptionId or None")
-        object.__setattr__(self, "rules", MappingProxyType(dict(self.rules)))
+        _validate_rules(self, WorkloadId)
 
     def select(self, request: PolicyRequest) -> DecisionRecord:
         if not isinstance(request, PolicyRequest):
             raise TypeError("request must be PolicyRequest")
-        target = self.rules.get(request.workload_id, self.fallback_option_id)
-        if target is None:
-            return _decision(
-                request, self.policy_version, None, Decimal(1), "no_task_rule"
-            )
-        candidate = next(
-            (item for item in request.candidates if item.option_id == target), None
+        return _select_target(
+            request,
+            self.policy_version,
+            self.rules.get(request.workload_id, self.fallback_option_id),
+            "no_workload_rule",
         )
-        if candidate is None:
-            return _decision(
-                request, self.policy_version, None, Decimal(1), "rule_option_missing"
-            )
-        if not candidate.eligible:
-            return _decision(
-                request, self.policy_version, None, Decimal(1), "rule_option_ineligible"
-            )
-        return _decision(request, self.policy_version, target, Decimal(1))
+
+
+@dataclass(frozen=True, slots=True)
+class TaskFeatureRulePolicy:
+    """Route by explicit versioned task-family features, not budget grouping."""
+
+    rules: Mapping[str, OptionId]
+    policy_version: PolicyVersion
+    feature_version: str
+    fallback_option_id: OptionId | None = None
+
+    def __post_init__(self) -> None:
+        _validate_rules(self, str)
+        if not isinstance(self.feature_version, str) or not self.feature_version:
+            raise ValueError("feature_version must be a non-empty string")
+
+    def select(self, request: PolicyRequest) -> DecisionRecord:
+        if not isinstance(request, PolicyRequest):
+            raise TypeError("request must be PolicyRequest")
+        if request.task_features.version != self.feature_version:
+            raise PolicyConfigurationError("task feature version does not match policy")
+        return _select_target(
+            request,
+            self.policy_version,
+            self.rules.get(request.task_features.task_family, self.fallback_option_id),
+            "no_task_feature_rule",
+        )
+
+
+def _validate_rules(policy, key_type) -> None:
+    if not isinstance(policy.rules, Mapping) or not policy.rules:
+        raise PolicyConfigurationError("rules must be a non-empty mapping")
+    if any(not isinstance(key, key_type) or (key_type is str and not key) for key in policy.rules):
+        raise TypeError("rule keys have the wrong type")
+    if any(not isinstance(value, OptionId) for value in policy.rules.values()):
+        raise TypeError("rule values must be OptionId values")
+    if not isinstance(policy.policy_version, PolicyVersion):
+        raise TypeError("policy_version must be PolicyVersion")
+    if policy.fallback_option_id is not None and not isinstance(
+        policy.fallback_option_id, OptionId
+    ):
+        raise TypeError("fallback_option_id must be OptionId or None")
+    object.__setattr__(policy, "rules", MappingProxyType(dict(policy.rules)))
+
+
+def _select_target(request, version, target, missing_reason):
+    if target is None:
+        return _decision(request, version, None, Decimal(1), missing_reason)
+    candidate = next((item for item in request.candidates if item.option_id == target), None)
+    if candidate is None:
+        return _decision(request, version, None, Decimal(1), "rule_option_missing")
+    if not candidate.eligible:
+        return _decision(request, version, None, Decimal(1), "rule_option_ineligible")
+    return _decision(request, version, target, Decimal(1))
+
+
+# Reviewed compatibility alias. New code should use WorkloadRulePolicy.
+TaskRulePolicy = WorkloadRulePolicy
