@@ -53,6 +53,8 @@ from .ledger import (
     SettlementResult,
 )
 from .pricing import Tariff, calculate_attempt_bound
+from .probes import ProbeCandidate, ProbePlan, ProbeVariant, authorize_probe_plan, plan_probes
+from .statistics import FrozenStrataEstimator, OutcomeCostObservation, StratumEstimate
 from .router import (
     IcebergRouter,
     PolicyContractError,
@@ -104,6 +106,9 @@ __all__ = (
     "OperationResult",
     "OptionExecutor",
     "PolicyContractError",
+    "ProbeCandidate",
+    "ProbePlan",
+    "ProbeVariant",
     "ReservationRecord",
     "ReservationState",
     "RouteRequest",
@@ -114,8 +119,13 @@ __all__ = (
     "SQLiteExecutionStore",
     "SQLiteAuditJournal",
     "SettlementResult",
+    "FrozenStrataEstimator",
+    "OutcomeCostObservation",
+    "StratumEstimate",
     "Tariff",
     "ValidatedOption",
     "validate_option",
     "calculate_attempt_bound",
+    "authorize_probe_plan",
+    "plan_probes",
 )

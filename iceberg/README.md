@@ -133,3 +133,16 @@ named local WR interpretations under one declared comparison contract. It does n
 run a model, reproduce official author code, validate a real conditional workflow,
 or establish an Iceberg advantage. The real-workflow acceptance gate remains
 blocked pending separate authorization and provenance review.
+
+PR 8 adds a controlled synthetic evidence-acquisition study:
+
+```sh
+PYTHONPATH=src python -m iceberg_router.experiments.evidence --output results/evidence-v1
+```
+
+It holds one downstream allocator fixed across zero, random, stratified, and racing
+probe schedules; enforces a predeclared cash cap; separates outcome variability from
+estimation uncertainty; and includes adaptation expense in held-out net utility. Its
+result is null, so the recorded decision simplifies to zero-probe. This is not real
+model evidence, and learned acquisition, adaptive feedback, and dynamic graphs remain
+deferred.

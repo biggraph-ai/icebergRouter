@@ -34,9 +34,12 @@ EXPECTED_MODULES = {
     "iceberg_router.core.ledger",
     "iceberg_router.core.pricing",
     "iceberg_router.core.router",
+    "iceberg_router.core.statistics",
+    "iceberg_router.core.probes",
     "iceberg_router.evaluation",
     "iceberg_router.experiments",
     "iceberg_router.experiments.baseline",
+    "iceberg_router.experiments.evidence",
     "iceberg_router.policies",
     "iceberg_router.policies.fixed",
     "iceberg_router.policies.random_mixture",
@@ -53,7 +56,7 @@ ALLOWED_ICEBERG_IMPORTS = {
     "adapters": {"contracts", "adapters"},
     "testing": {"contracts", "core", "policies", "adapters", "testing"},
     "evaluation": {"contracts", "evaluation"},
-    "experiments": {"experiments"},
+    "experiments": {"contracts", "core", "experiments"},
 }
 
 

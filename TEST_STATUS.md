@@ -5,7 +5,7 @@ Date: 20 September 2026.
 Required product command executed:
 `PYTHONPATH=src python -m unittest discover -s tests/product -t . -v`
 
-Result: all 153 product tests passed. The former PR 3 identical-retry expected
+Result: all 161 product tests passed. The former PR 3 identical-retry expected
 failure is now a passing durable replay regression, and the former PR 1
 financial-truth expected failures remain ordinary passing regressions.
 They are separate from, and do not weaken, the passing current-behavior and
@@ -87,6 +87,21 @@ Result: `report.json` and `table.md` were reproduced without network or paid cal
 This is synthetic mechanics evidence only. No authorized real conditional-workflow
 run was executed, and no routing-quality, Iceberg-advantage, official-author-code,
 or inherited-theorem claim is made.
+
+Focused PR 8 command executed:
+`PYTHONPATH=src python -m unittest tests.product.test_pr_eight_evidence tests.product.test_increment_zero -v`
+
+Result: all 12 estimator, probe-planning, transactional-cap, controlled-study, and
+structure tests passed. The frozen synthetic study holds one allocator fixed, keeps
+coverage matched, separates intrinsic variance from estimator uncertainty, and
+records the predeclared null-result simplification without changing baselines.
+
+Offline evidence command executed:
+`PYTHONPATH=src python -m iceberg_router.experiments.evidence --output results/evidence-v1`
+
+Result: the evidence report was reproduced offline. Every paid-call/network
+permission remains false. No real model, provider, learned probe-value model,
+adaptive feedback policy, or dynamic graph was run.
 
 No claim of supported behavior for every provider or operating system is made. The
 product CI matrix declares Python 3.10–3.13; that hosted matrix was added but was

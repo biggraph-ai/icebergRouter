@@ -189,3 +189,12 @@ All strategies share one comparison contract. Generated reports are explicitly
 synthetic, disclose every experiment account (zero external cost in this fixture),
 and prohibit superiority/theorem claims. A real conditional-workflow run remains a
 separate authorization gate rather than being simulated and called real.
+
+PR 8 adds immutable empirical context-stratum estimates and predeclared probe plans.
+Intrinsic Bernoulli outcome variance and estimator standard error remain separate.
+Zero, seeded-random, stratified, and resource-aware-racing schedules share one
+unchanged downstream allocator; racing schedules observations but never prunes an
+option. Probe plans can only become executable through distinct ledger
+reservations/authorizations under the adaptation account cap. The frozen synthetic
+study reports a null result and retains zero-probe as the simpler configuration;
+learned probe valuation, adaptive feedback, and dynamic graphs remain deferred.

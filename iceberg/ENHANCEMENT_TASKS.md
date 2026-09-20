@@ -407,26 +407,31 @@ and the applicable acceptance gates explicitly authorize method implementation.
 
 **Tasks**
 
-- [ ] Add calibrated baseline outcome and cost estimators for frozen context strata.
-- [ ] Implement zero-probe, cash-capped random-probe, and cash-capped stratified-probe
+- [x] Add calibrated baseline outcome and cost estimators for frozen context strata.
+- [x] Implement zero-probe, cash-capped random-probe, and cash-capped stratified-probe
       variants before any learned acquisition model.
-- [ ] Hold the downstream allocator fixed across probe variants.
-- [ ] Add resource-aware racing as a separately named variant; avoid irreversible
+- [x] Hold the downstream allocator fixed across probe variants.
+- [x] Add resource-aware racing as a separately named variant; avoid irreversible
       pruning from small noisy samples.
-- [ ] Predeclare stopping rules inside the transactional adaptation cap.
-- [ ] Report intrinsic outcome variability separately from uncertainty in estimated
+- [x] Predeclare stopping rules inside the transactional adaptation cap.
+- [x] Report intrinsic outcome variability separately from uncertainty in estimated
       success probability.
-- [ ] Compare held-out net utility/cost after adaptation expense at matched coverage
+- [x] Compare held-out net utility/cost after adaptation expense at matched coverage
       and identical information access.
-- [ ] Add learned probe value, adaptive feedback, or dynamic graphs only after the
+- [x] Add learned probe value, adaptive feedback, or dynamic graphs only after the
       simpler controlled study justifies the added mechanism.
 
 **Acceptance / stop rule**
 
-- [ ] evidence acquisition repays its full cost relative to equal-option controls,
+- [x] evidence acquisition repays its full cost relative to equal-option controls,
       or the implementation is simplified and the null result is reported;
-- [ ] baselines, coverage denominators, or cost accounting are not changed after the
+- [x] baselines, coverage denominators, or cost accounting are not changed after the
       result merely to manufacture an advantage.
+
+The frozen synthetic study is an honest null result: no probe variant repaid its
+full acquisition cost, so the recorded stop decision simplifies to zero-probe.
+The final task above is satisfied by deferring—rather than implementing—learned
+probe value, adaptive feedback, and dynamic graphs until real evidence justifies them.
 
 ---
 

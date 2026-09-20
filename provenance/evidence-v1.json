@@ -1,0 +1,33 @@
+{
+  "deferred": [
+    "learned-probe-value",
+    "adaptive-feedback",
+    "dynamic-graphs"
+  ],
+  "evidence": "synthetic-mechanics-only",
+  "inputs": {
+    "portfolioFile": "fixtures/options/portfolio-v1.json",
+    "portfolioFileSha256": "40d65671b4ce0fc4c9a27dcc7dd8e07ffba4ffcd0aff71085049265443af2b97",
+    "workloadFile": "fixtures/workloads/synthetic-baseline-v1.json",
+    "workloadFileSha256": "c46209eb6fd3329fb6d44e67626bb2b5a9adbbedec83a2bdf878ea6c639e9b31"
+  },
+  "permissions": {
+    "maximumExternalCostNanos": "0",
+    "network": false,
+    "paidCalls": false
+  },
+  "predeclared": {
+    "allocator": "empirical-success-then-cost-v1",
+    "probeCapNanos": "200",
+    "stoppingRule": "stop before next whole probe exceeds cap",
+    "utilityValueNanos": "100",
+    "variants": [
+      "zero-probe",
+      "cash-capped-random-probe",
+      "cash-capped-stratified-probe",
+      "resource-aware-racing"
+    ]
+  },
+  "schemaVersion": "evidence-provenance-v1",
+  "seed": "probe-study-v1"
+}

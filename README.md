@@ -77,3 +77,7 @@ actually tested. No upstream build or paper-result reproduction is claimed.
 The first reproducible baseline artifact is an offline synthetic mechanics check,
 not a model benchmark. Its command, interpretation boundaries, and blocked real-run
 gate are documented in `experiments/baselines/README.md`.
+
+The follow-on PR 8 synthetic evidence-acquisition study is documented in
+`experiments/evidence/README.md`. It reports an honest null result and retains the
+simpler zero-probe configuration; it is not evidence of model or router superiority.
